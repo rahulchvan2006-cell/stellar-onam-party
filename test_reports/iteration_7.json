@@ -1,0 +1,32 @@
+{
+  "summary": "Verified the enhanced wa.me fallback + restored visible WhatsApp send buttons. Backend: ran purge_test_qa.py then pytest /app/backend/tests/backend_test.py -> 45 passed, 1 skipped, 0 failed (added TestPublicProofEndpoint::test_proof_cache_control_private; note the ingress rewrites the header to 'no-store, no-cache, must-revalidate', so the assertion checks no-store only). _wa_share_url dead code from iteration 6 is gone; proof endpoint now sets Cache-Control private, no-store at the app layer. Frontend (Playwright): (1) PRE-upload on /booking/{id} only UPI QR (upi-qr), pay-upi-app-btn, upload-screenshot-btn are shown and whatsapp-notify-* count == 0. (2) On set_input_files into the hidden screenshot-input, page.context.expect_page() captured an auto-opened tab to https://api.whatsapp.com/send/?phone=917483557316&text=... with full pre-filled booking text -> the <a target=_blank> click inside the gesture chain works. (3) After upload the emerald block 'Important — Send your details to us on WhatsApp' renders exactly 2 anchors: whatsapp-notify-0 href starts https://wa.me/917483557316?text= (label 'Send to Kiran on WhatsApp') and whatsapp-notify-1 starts https://wa.me/919844912006?text= (label 'Send to Rahul on WhatsApp'); URL-decoded text of BOTH contains https://<base>/booking/{id} AND https://<base>/api/bookings/{id}/proof plus name, Amount ₹998, AWAITING VERIFICATION. (4) Blue 'Confirming in 2 hours…' banner renders directly above the emerald block (verified visually on 390x844 too). (5) GET /api/bookings/{id}/proof returns 200 image/png from the browser. Regression: 5-digit phone rejected inline ('Enter 10 digits starting with 6-9' + toast 'Enter a valid 10-digit Indian mobile'), dialog stays open; admin login stellar2026 -> view-screenshot renders the data-URL image -> confirm flips the row to CONFIRMED; /booking/{id} then shows the big green 'Successfully Paid ✓' banner and the emerald block is (by design) hidden. All TEST_QA rows purged (remaining=3 pre-existing non-test rows).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/bookings/{id}/proof", "issue": "App sets 'Cache-Control: private, no-store' but the k8s ingress replaces it with 'no-store, no-cache, must-revalidate' (private dropped). Functionally safe (no-store wins); noted so future tests don't assert on 'private'."},
+      {"endpoint": "POST /api/bookings (test capacity)", "issue": "Still must run `python /app/backend/tests/purge_test_qa.py` BEFORE every pytest run - a second back-to-back run without purge exhausted the 45 early-bird slots and produced 15 cascading 409 failures (reproduced this run)."},
+      {"endpoint": "CallMeBot server push", "issue": "CALLMEBOT_* keys still empty in backend/.env, so the server-side WhatsApp push silently no-ops. Guest-tap wa.me fallback is the only delivery path today - keys must be filled for true server-side notification."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Confirmation /booking/{id}", "issues": ["After admin confirmation the emerald/blue WhatsApp re-share block disappears (it lives inside the !confirmed branch), so a confirmed guest can no longer re-send details - carried over from iterations 5/6, confirm if intentional.", "On 390px mobile the two emerald anchors render ~240px wide (pill-btn max-width) rather than full-width; they are centered and tappable, purely cosmetic."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/backend/tests/purge_test_qa.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": ["No functional fix required for the reported change - it works end to end.", "Fill CALLMEBOT_* keys in backend/.env if server-side push (not guest tap) is expected.", "Decide whether the WhatsApp re-share block should also render for confirmed bookings."],
+  "critical_code_review_comments": [
+    "Confirmation.jsx upload(): the anchor click happens AFTER two awaits (upload POST + GET booking), so it is no longer strictly inside the synchronous user-gesture window. Chrome still allowed it in this run, but Safari/iOS may block it - consider opening the tab from the pre-existing whatsapp_share_urls[0].url synchronously in the onChange handler (or window.open placeholder then set location) for full reliability.",
+    "upload() has no client-side file-size/type guard; a large image is base64-inflated into Mongo (~33% overhead). Backend accepts any image/* with no max size - add a size limit."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100% (45 passed, 1 skipped)", "frontend": "100%"},
+  "seed_data_creation": "Created one TEST_QA Playwright booking (2 tickets, delivered@resend.dev) + ~30 pytest TEST_QA rows; all purged after the run.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Admin password stellar2026 (/app/memory/test_credentials.md)",
+  "context_for_next_testing_agent": "ALWAYS run `python /app/backend/tests/purge_test_qa.py` before pytest (slot exhaustion -> 409 cascade, reproduced). backend_test.py covers event info, booking create/phone normalization/quantity bounds, upload, admin auth/confirm/reject/screenshot, wa.me share url shape + booking & proof links, public /proof (404 pre-upload, image after, jpeg mime, cache-control), ticket PDF 403/200/404. Playwright: screenshot input hidden -> set_input_files on [data-testid=screenshot-input]; auto-opened WhatsApp tab captured with page.context.expect_page(); admin testids admin-password-input/admin-login-btn/booking-row-{id}/view-screenshot-{id}/confirm-{id}; emerald buttons whatsapp-notify-0 (Kiran 917483557316) and whatsapp-notify-1 (Rahul 919844912006), only rendered when screenshot_uploaded && !confirmed.",
+  "rca_of_the_issue": "No defect found in the fix. The user's original 'no message' complaint is explained by empty CALLMEBOT keys (no server push) plus the guest never tapping Send; the current build both auto-opens the WhatsApp tab in the gesture chain and shows two persistent pre-filled Send buttons carrying the booking + proof links, so delivery now only requires one tap. Residual risk: iOS Safari may still block the auto-opened tab because the anchor click occurs after two awaits."
+}

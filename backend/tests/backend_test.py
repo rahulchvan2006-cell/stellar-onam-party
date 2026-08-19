@@ -468,6 +468,21 @@ class TestPublicProofEndpoint:
         assert p.headers["content-type"] == "image/png"
         assert p.content == PNG_1PX
 
+    def test_proof_cache_control_private(self, api, created_ids):
+        r = make_booking(api, 1)
+        bid = r.json()["id"]
+        created_ids.append(bid)
+        api.post(
+            f"{BASE_URL}/api/bookings/{bid}/upload-screenshot",
+            files={"file": ("proof.png", io.BytesIO(PNG_1PX), "image/png")},
+            timeout=60,
+        )
+        p = api.get(f"{BASE_URL}/api/bookings/{bid}/proof", timeout=30)
+        assert p.status_code == 200
+        cc = p.headers.get("cache-control", "")
+        # ingress may rewrite to "no-store, no-cache, must-revalidate"; no-store is the key part
+        assert "no-store" in cc, cc
+
     def test_proof_jpeg_content_type_preserved(self, api, created_ids):
         r = make_booking(api, 1)
         bid = r.json()["id"]
