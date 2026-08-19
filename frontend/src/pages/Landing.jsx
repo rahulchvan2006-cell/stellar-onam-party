@@ -16,7 +16,6 @@ import {
   Clock,
   Phone,
   Instagram,
-  Facebook,
 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Countdown from "@/components/Countdown";
@@ -138,7 +137,7 @@ export default function Landing() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-600 text-white text-xs sm:text-sm font-semibold shadow-lg"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              {soldOut ? "SOLD OUT" : `Early Bird — Only ${remaining} of 45 slots left!`}
+              Early Bird — 45 Slots
             </div>
             <button
               data-testid="hero-book-btn"
@@ -332,7 +331,7 @@ export default function Landing() {
 
               <div className="rounded-xl bg-orange-50 border border-orange-200 p-4 mb-6">
                 <p className="text-sm text-slate-800">
-                  <b>{soldOut ? "SOLD OUT" : `${remaining} of 45 slots left`}</b> — book fast before it's gone.
+                  <b>45 Slots</b> — book fast before it's gone.
                 </p>
               </div>
 
@@ -413,21 +412,25 @@ export default function Landing() {
             <h5 className="font-semibold mb-3 text-white">Contact</h5>
             <div className="space-y-2 text-sm">
               <a href="tel:+917483557316" className="flex items-center gap-2 hover:text-orange-400" data-testid="contact-kiran">
-                <Phone className="w-4 h-4" /> Kiran — +91 7483 557 316
+                <Phone className="w-4 h-4" /> +91 7483 557 316
               </a>
               <a href="tel:+919844912006" className="flex items-center gap-2 hover:text-orange-400" data-testid="contact-rahul">
-                <Phone className="w-4 h-4" /> Rahul — +91 98449 12006
+                <Phone className="w-4 h-4" /> +91 98449 12006
               </a>
             </div>
           </div>
           <div>
             <h5 className="font-semibold mb-3 text-white">Follow</h5>
             <div className="flex gap-3">
-              <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-orange-500 flex items-center justify-center transition-colors" data-testid="social-instagram">
+              <a
+                href="https://instagram.com/stellar._.entertainments"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 h-10 rounded-full bg-white/10 hover:bg-gradient-to-r hover:from-pink-500 hover:via-red-500 hover:to-yellow-400 transition-colors"
+                data-testid="social-instagram"
+              >
                 <Instagram className="w-5 h-5" />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-white/10 hover:bg-orange-500 flex items-center justify-center transition-colors" data-testid="social-facebook">
-                <Facebook className="w-5 h-5" />
+                <span className="text-sm font-medium">@stellar._.entertainments</span>
               </a>
             </div>
             <p className="text-xs text-slate-500 mt-6 leading-relaxed">
@@ -446,10 +449,9 @@ export default function Landing() {
         <button
           data-testid="sticky-book-btn"
           onClick={() => setOpenBooking(true)}
-          disabled={soldOut}
           className="pill-btn w-full"
         >
-          {soldOut ? "Sold Out" : `Book Now · ₹499 (${remaining} left)`}
+          Book Now · ₹499
         </button>
       </div>
 
