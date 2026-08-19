@@ -50,7 +50,7 @@ export default function BookingDialog({ open, onOpenChange, remaining }) {
           <DialogDescription className="text-slate-600">
             {soldOut
               ? "Early Bird is sold out."
-              : `Only ${remaining} of 45 slots left. Fill details to reserve.`}
+              : "Limited slots available. Fill details to reserve."}
           </DialogDescription>
         </DialogHeader>
 

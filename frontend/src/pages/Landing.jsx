@@ -137,7 +137,7 @@ export default function Landing() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-600 text-white text-xs sm:text-sm font-semibold shadow-lg"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Early Bird — 45 Slots
+              Early Bird — Limited Slots
             </div>
             <button
               data-testid="hero-book-btn"
@@ -326,12 +326,12 @@ export default function Landing() {
                 <li>· Full entry to Onam Party</li>
                 <li>· Live Kerala Band + DJ Night access</li>
                 <li>· Traditional games & pookalam experience</li>
-                <li>· Only 45 slots available</li>
+                <li>· Limited slots available</li>
               </ul>
 
               <div className="rounded-xl bg-orange-50 border border-orange-200 p-4 mb-6">
                 <p className="text-sm text-slate-800">
-                  <b>45 Slots</b> — book fast before it's gone.
+                  <b>Limited Slots</b> — book fast before it's gone.
                 </p>
               </div>
 
