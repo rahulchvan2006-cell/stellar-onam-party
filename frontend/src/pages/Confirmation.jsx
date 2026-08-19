@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Loader2, Upload, CheckCircle2, Copy, Flower2, Phone } from "lucide-react";
+import { Loader2, Upload, CheckCircle2, Copy, Flower2, Phone, Smartphone } from "lucide-react";
 
 export default function Confirmation() {
   const { id } = useParams();
@@ -97,6 +97,17 @@ export default function Confirmation() {
                 <div className="p-4 bg-white rounded-2xl border-2 border-amber-300 shadow-lg">
                   <img src={b.qr_data_url} alt="UPI QR" className="w-56 h-56" data-testid="upi-qr" />
                 </div>
+                <p className="text-xs text-slate-500 -mt-1">Scan to auto-fill ₹{b.amount}</p>
+
+                {/* One-tap UPI deep-link — auto-opens GPay/PhonePe/Paytm with amount prefilled */}
+                <a
+                  href={b.upi_uri}
+                  className="pill-btn w-full sm:w-auto"
+                  data-testid="pay-upi-app-btn"
+                >
+                  <Smartphone className="w-4 h-4 mr-2" /> Pay ₹{b.amount} via UPI App
+                </a>
+
                 <div className="flex items-center gap-2 rounded-full bg-slate-900 text-white px-4 py-2">
                   <span className="text-sm font-mono" data-testid="upi-id">{b.upi_id}</span>
                   <button onClick={copyUpi} className="text-amber-300 hover:text-amber-100" data-testid="copy-upi-btn">
