@@ -89,14 +89,14 @@ export default function Confirmation() {
               {confirmed
                 ? "You're In!"
                 : awaiting
-                ? "Awaiting Verification"
+                ? "Confirming in 2 hours"
                 : "Booking Received!"}
             </h1>
             <p className="text-slate-600">
               {confirmed
-                ? "Your pass has been sent to your WhatsApp. Show this or the DM at the venue entry."
+                ? "Your pass has been DM'd to your WhatsApp. Show it at the venue entry."
                 : awaiting
-                ? "We received your payment screenshot. Please wait up to 2 hours — we'll verify manually and DM your pass to your WhatsApp."
+                ? "Payment received. We'll verify manually and DM your pass to your WhatsApp personally within 2 hours."
                 : "Complete the UPI payment below and upload the screenshot to reserve your slot."}
             </p>
           </div>
@@ -168,34 +168,20 @@ export default function Confirmation() {
               </button>
 
               {b.screenshot_uploaded && (
-                <div className="rounded-xl bg-blue-50 border-2 border-blue-300 p-5 mt-2">
-                  <div className="flex items-start gap-3 mb-4">
-                    <CheckCircle2 className="w-6 h-6 text-blue-700 mt-0.5 shrink-0" />
-                    <div className="text-sm text-blue-950 leading-relaxed">
-                      <p className="font-bold text-base mb-1">Payment screenshot received ✓</p>
-                      <p>
-                        Now send it to <b>Kiran</b> and <b>Rahul</b> on WhatsApp so they can verify.
-                        Tap the buttons below — your booking details and screenshot link are pre-filled.
-                        We'll DM your pass to <b>+91 {b.phone}</b> within 2 hours.
-                      </p>
+                <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-6 mt-2 shadow-xl">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 rounded-full bg-white/25 flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-blue-100 font-semibold">Payment Received</p>
+                      <h2 className="font-display text-2xl font-black">Confirming Your Booking…</h2>
                     </div>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    {b.whatsapp_share_urls?.map((w, i) => (
-                      <a
-                        key={w.phone}
-                        href={w.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="pill-btn flex-1 justify-center"
-                        style={{ background: "linear-gradient(135deg, #25D366 0%, #128C7E 100%)", boxShadow: "0 8px 24px rgba(37, 211, 102, 0.35)" }}
-                        data-testid={`whatsapp-notify-${i}`}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Send to {i === 0 ? "Kiran" : "Rahul"}
-                      </a>
-                    ))}
-                  </div>
+                  <p className="text-sm text-blue-50 leading-relaxed">
+                    We'll verify the transaction manually and <b>DM your pass personally on WhatsApp to +91 {b.phone} within 2 hours</b>.
+                    You can close this page — sit tight, we've got you.
+                  </p>
                 </div>
               )}
             </>
