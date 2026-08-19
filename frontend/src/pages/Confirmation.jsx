@@ -8,14 +8,30 @@ export default function Confirmation() {
   const { id } = useParams();
   const [b, setB] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [sent, setSent] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(`sent_${id}`) || "{}");
+    } catch {
+      return {};
+    }
+  });
   const fileRef = useRef(null);
+
+  const markSent = (phone) => {
+    const next = { ...sent, [phone]: true };
+    setSent(next);
+    try {
+      localStorage.setItem(`sent_${id}`, JSON.stringify(next));
+    } catch (_) {
+      /* ignore quota errors (e.g. Safari private mode) */
+    }
+  };
 
   const load = () => api.get(`/bookings/${id}`).then((r) => setB(r.data)).catch(() => {});
   useEffect(() => {
     load();
     const timer = setInterval(load, 15000);
     return () => clearInterval(timer);
-    /* eslint-disable-next-line */
   }, [id]);
 
   const copyUpi = () => {
@@ -25,11 +41,6 @@ export default function Confirmation() {
 
   const upload = async (file) => {
     if (!file) return;
-    // Reserve a popup tab synchronously in the user gesture (Safari/iOS reliability)
-    let waWin = null;
-    try {
-      waWin = window.open("about:blank", "_blank");
-    } catch (_) {}
     setUploading(true);
     const fd = new FormData();
     fd.append("file", file);
@@ -37,22 +48,10 @@ export default function Confirmation() {
       await api.post(`/bookings/${id}/upload-screenshot`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      toast.success("Uploaded! Now tap 'Send to Kiran on WhatsApp' below.");
+      toast.success("Uploaded! Now send details to BOTH organizers on WhatsApp.");
       const fresh = await api.get(`/bookings/${id}`);
       setB(fresh.data);
-      const wa = fresh.data?.whatsapp_share_urls?.[0]?.url;
-      if (wa) {
-        if (waWin && !waWin.closed) waWin.location.href = wa;
-        else {
-          const a = document.createElement("a");
-          a.href = wa; a.target = "_blank"; a.rel = "noopener noreferrer";
-          document.body.appendChild(a); a.click(); a.remove();
-        }
-      } else if (waWin && !waWin.closed) {
-        waWin.close();
-      }
     } catch (e) {
-      if (waWin && !waWin.closed) waWin.close();
       toast.error(e?.response?.data?.detail || "Upload failed");
     } finally {
       setUploading(false);
@@ -103,14 +102,14 @@ export default function Confirmation() {
               {confirmed
                 ? "You're In!"
                 : awaiting
-                ? "Confirming in 2 hours"
+                ? "Send Details to Us Now"
                 : "Booking Received!"}
             </h1>
             <p className="text-slate-600">
               {confirmed
                 ? "Your pass has been DM'd to your WhatsApp. Show it at the venue entry."
                 : awaiting
-                ? "Payment received. We'll verify manually and DM your pass to your WhatsApp personally within 2 hours."
+                ? "Payment received. Compulsory: forward the details to both organizers on WhatsApp below. We'll DM your pass within 2 hours."
                 : "Complete the UPI payment below and upload the screenshot to reserve your slot."}
             </p>
           </div>
@@ -181,60 +180,90 @@ export default function Confirmation() {
                 {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Upload className="w-4 h-4 mr-2" /> {b.screenshot_uploaded ? "Re-upload Screenshot" : "Upload Payment Screenshot"}</>}
               </button>
 
-              {b.screenshot_uploaded && (
-                <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-6 mt-2 shadow-xl mb-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 rounded-full bg-white/25 flex items-center justify-center">
-                      <Loader2 className="w-6 h-6 text-white animate-spin" />
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-widest text-blue-100 font-semibold">Payment Received</p>
-                      <h2 className="font-display text-2xl font-black">Confirming in 2 hours…</h2>
-                    </div>
-                  </div>
-                  <p className="text-sm text-blue-50 leading-relaxed">
-                    We'll verify manually and <b>DM your pass personally to +91 {b.phone} within 2 hours</b>.
-                  </p>
-                </div>
-              )}
+              {b.screenshot_uploaded && b.whatsapp_share_urls?.length > 0 && (() => {
+                const allSent = b.whatsapp_share_urls.every((w) => sent[w.phone]);
+                return (
+                  <>
+                    {!allSent && (
+                      <div className="rounded-2xl bg-gradient-to-br from-red-600 to-rose-600 text-white p-6 mt-2 shadow-xl mb-4">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-12 h-12 rounded-full bg-white/25 flex items-center justify-center">
+                            <MessageCircle className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-widest text-red-100 font-semibold">Compulsory Step</p>
+                            <h2 className="font-display text-2xl font-black">Send Details on WhatsApp</h2>
+                          </div>
+                        </div>
+                        <p className="text-sm text-red-50 leading-relaxed">
+                          Your booking <b>will NOT be confirmed</b> until you send the details to <b>both</b> organizers below.
+                          Tap each button, hit <b>Send</b> in WhatsApp, then mark it done here.
+                        </p>
+                      </div>
+                    )}
 
-              {/* Guest-driven WhatsApp forward — always visible after upload so message reaches organizer */}
-              {b.screenshot_uploaded && b.whatsapp_share_urls?.length > 0 && (
-                <div className="rounded-2xl bg-emerald-50 border-2 border-emerald-400 p-5 mt-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <MessageCircle className="w-5 h-5 text-emerald-700" />
-                    <p className="font-bold text-emerald-900 text-base">
-                      Important — Send your details to us on WhatsApp
-                    </p>
-                  </div>
-                  <p className="text-xs text-emerald-900 mb-4 leading-relaxed">
-                    Tap a button below and hit <b>Send</b> in WhatsApp. Your booking + payment screenshot link is pre-filled. Without this tap we won't know you paid.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    {b.whatsapp_share_urls.map((w, i) => (
-                      <a
-                        key={w.phone}
-                        href={w.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="pill-btn flex-1 justify-center"
-                        style={{ background: "linear-gradient(135deg, #25D366 0%, #128C7E 100%)", boxShadow: "0 8px 24px rgba(37, 211, 102, 0.45)" }}
-                        data-testid={`whatsapp-notify-${i}`}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Send to {i === 0 ? "Kiran" : "Rahul"} on WhatsApp
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    <div className={`rounded-2xl border-2 p-5 mt-2 ${allSent ? "bg-gradient-to-br from-emerald-500 to-green-600 border-emerald-600 text-white shadow-xl" : "bg-amber-50 border-amber-400"}`}>
+                      <p className={`font-display font-black text-xl mb-1 ${allSent ? "text-white" : "text-slate-900"}`}>
+                        {allSent ? "Details Sent ✓" : "Send to both organizers"}
+                      </p>
+                      <p className={`text-sm mb-4 leading-relaxed ${allSent ? "text-emerald-50" : "text-slate-700"}`}>
+                        {allSent
+                          ? `Your pass will be DM'd within 2 hours to your WhatsApp — +91 ${b.phone}.`
+                          : "Booking + payment screenshot link is pre-filled. Tap the WhatsApp button, hit Send, then tick the checkbox."}
+                      </p>
+                      <div className="space-y-3">
+                        {b.whatsapp_share_urls.map((w, i) => {
+                          const name = i === 0 ? "Kiran" : "Rahul";
+                          const done = !!sent[w.phone];
+                          return (
+                            <div key={w.phone} className={`rounded-xl border-2 p-3 flex items-center justify-between gap-3 flex-wrap ${done ? "bg-white border-emerald-400" : "bg-white border-slate-200"}`}>
+                              <div className="flex items-center gap-3">
+                                <input
+                                  id={`sent-${w.phone}`}
+                                  type="checkbox"
+                                  checked={done}
+                                  onChange={(e) => {
+                                    if (e.target.checked) markSent(w.phone);
+                                    else {
+                                      const next = { ...sent };
+                                      delete next[w.phone];
+                                      setSent(next);
+                                      localStorage.setItem(`sent_${id}`, JSON.stringify(next));
+                                    }
+                                  }}
+                                  className="w-5 h-5 accent-emerald-600 cursor-pointer"
+                                  data-testid={`sent-check-${i}`}
+                                />
+                                <label htmlFor={`sent-${w.phone}`} className="text-sm font-semibold text-slate-800 cursor-pointer">
+                                  {done ? `Sent to ${name} ✓` : `I've sent to ${name}`}
+                                </label>
+                              </div>
+                              <a
+                                href={w.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={() => markSent(w.phone)}
+                                className={`inline-flex items-center px-4 py-2 rounded-full text-white font-semibold text-sm ${done ? "bg-slate-500 hover:bg-slate-600" : "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"}`}
+                                data-testid={`whatsapp-notify-${i}`}
+                              >
+                                <MessageCircle className="w-4 h-4 mr-2" />
+                                {done ? "Re-send" : `Send to ${name}`}
+                              </a>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </>
           )}
 
           {confirmed && (
             <div className="mb-6">
               <p className="text-sm text-slate-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-                Your pass has been DM'd to your WhatsApp ({b.phone}) by the organizers.
+                Your pass has been DM&apos;d to your WhatsApp ({b.phone}) by the organizers.
               </p>
             </div>
           )}
