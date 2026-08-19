@@ -38,7 +38,7 @@ class BookingCreate(BaseModel):
     full_name: str
     phone: str
     email: EmailStr
-    quantity: int = Field(ge=1, le=10)
+    quantity: int = Field(ge=1, le=20)
     pass_type: str = "early_bird"
 
 
@@ -57,6 +57,7 @@ class BookingOut(BaseModel):
     upi_id: Optional[str] = None
     upi_uri: Optional[str] = None
     qr_data_url: Optional[str] = None
+    whatsapp_share_urls: Optional[list] = None
 
 
 class AdminLogin(BaseModel):
@@ -121,7 +122,26 @@ def require_admin(x_admin_password: Optional[str] = Header(None)):
     return True
 
 
+def _wa_share_url(phone: str, doc: dict) -> str:
+    """Build a wa.me deep-link the guest can tap to forward booking details."""
+    lines = [
+        "*New Onam Party Booking*",
+        f"Name: {doc['full_name']}",
+        f"Phone: {doc['phone']}",
+        f"Email: {doc['email']}",
+        f"Tickets: {doc['quantity']} × Early Bird",
+        f"Amount: ₹{doc['amount']}",
+        f"Booking ID: {doc['id'][:8]}",
+        f"Status: {doc['status'].replace('_',' ').upper()}",
+        "",
+        "Payment screenshot uploaded on the booking page.",
+    ]
+    text = "\n".join(lines)
+    return f"https://wa.me/{phone.lstrip('+')}?text={quote(text)}"
+
+
 def booking_doc_to_out(doc: dict) -> dict:
+    phones = [p.strip() for p in ORGANIZER_PHONES.split(",") if p.strip()]
     return {
         "id": doc["id"],
         "full_name": doc["full_name"],
@@ -136,6 +156,10 @@ def booking_doc_to_out(doc: dict) -> dict:
         "upi_id": UPI_ID,
         "upi_uri": doc.get("upi_uri"),
         "qr_data_url": doc.get("qr_data_url"),
+        "whatsapp_share_urls": [
+            {"label": f"Organizer {i+1}", "phone": p, "url": _wa_share_url(p, doc)}
+            for i, p in enumerate(phones)
+        ],
     }
 
 

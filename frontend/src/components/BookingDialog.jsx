@@ -27,6 +27,12 @@ export default function BookingDialog({ open, onOpenChange, remaining }) {
     setLoading(true);
     try {
       const { data } = await api.post("/bookings", { ...form, pass_type: "early_bird" });
+      // Auto-open WhatsApp with booking details to first organizer, in the same
+      // user-gesture click so browsers don't block the popup.
+      const wa = data?.whatsapp_share_urls?.[0]?.url;
+      if (wa) {
+        window.open(wa, "_blank", "noopener,noreferrer");
+      }
       toast.success("Booking created! Complete UPI payment.");
       onOpenChange(false);
       navigate(`/booking/${data.id}`);
@@ -66,30 +72,66 @@ export default function BookingDialog({ open, onOpenChange, remaining }) {
               placeholder="Your name"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                data-testid="booking-phone-input"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                disabled={soldOut}
-                placeholder="+91..."
-              />
+          <div>
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              data-testid="booking-phone-input"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              disabled={soldOut}
+              placeholder="+91..."
+            />
+          </div>
+
+          <div>
+            <Label>Number of Tickets</Label>
+            <div className="mt-1.5 flex items-center justify-between rounded-xl border-2 border-amber-300 bg-white p-2">
+              <button
+                type="button"
+                data-testid="qty-minus-btn"
+                onClick={() => setForm({ ...form, quantity: Math.max(1, form.quantity - 1) })}
+                disabled={soldOut || form.quantity <= 1}
+                className="w-11 h-11 rounded-lg bg-amber-100 hover:bg-amber-200 disabled:opacity-40 flex items-center justify-center text-2xl font-bold text-orange-700 transition-colors"
+              >
+                −
+              </button>
+              <div className="flex flex-col items-center">
+                <span
+                  data-testid="booking-quantity-input"
+                  className="font-display text-4xl font-black text-slate-900 tabular-nums leading-none"
+                >
+                  {form.quantity}
+                </span>
+                <span className="text-[10px] uppercase tracking-widest text-slate-500 mt-1">
+                  {form.quantity === 1 ? "Ticket" : "Tickets"}
+                </span>
+              </div>
+              <button
+                type="button"
+                data-testid="qty-plus-btn"
+                onClick={() => setForm({ ...form, quantity: Math.min(20, form.quantity + 1) })}
+                disabled={soldOut || form.quantity >= 20}
+                className="w-11 h-11 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-40 flex items-center justify-center text-2xl font-bold text-white transition-colors shadow-md"
+              >
+                +
+              </button>
             </div>
-            <div>
-              <Label htmlFor="qty">Tickets</Label>
-              <Input
-                id="qty"
-                data-testid="booking-quantity-input"
-                type="number"
-                min={1}
-                max={Math.min(10, remaining || 1)}
-                value={form.quantity}
-                onChange={(e) => setForm({ ...form, quantity: Math.max(1, Number(e.target.value)) })}
-                disabled={soldOut}
-              />
+            <div className="mt-2 flex gap-1.5 flex-wrap">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setForm({ ...form, quantity: n })}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                    form.quantity === n
+                      ? "bg-orange-600 text-white"
+                      : "bg-amber-50 text-slate-700 hover:bg-amber-100"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
             </div>
           </div>
           <div>

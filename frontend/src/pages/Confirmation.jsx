@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Loader2, Upload, CheckCircle2, Copy, Flower2, Phone, Smartphone } from "lucide-react";
+import { Loader2, Upload, CheckCircle2, Copy, Flower2, Phone, Smartphone, MessageCircle } from "lucide-react";
 
 export default function Confirmation() {
   const { id } = useParams();
@@ -139,10 +139,39 @@ export default function Confirmation() {
               </button>
 
               {b.screenshot_uploaded && (
-                <div className="rounded-xl bg-green-50 border border-green-200 p-4 flex items-start gap-3">
+                <div className="rounded-xl bg-green-50 border border-green-200 p-4 flex items-start gap-3 mb-4">
                   <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
                   <div className="text-sm text-green-900">
-                    <b>Screenshot received.</b> Booking held for you. We'll confirm your e-pass on WhatsApp within a few hours.
+                    <b>Screenshot received.</b> Booking held for you. Notify the organizers on WhatsApp below so they can confirm faster.
+                  </div>
+                </div>
+              )}
+
+              {/* Notify Organizer on WhatsApp — auto-fills booking details */}
+              {b.whatsapp_share_urls?.length > 0 && (
+                <div className="rounded-xl bg-emerald-50 border-2 border-emerald-300 p-5 mt-2">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MessageCircle className="w-5 h-5 text-emerald-700" />
+                    <p className="font-semibold text-emerald-900">Step 3 · Send Details on WhatsApp</p>
+                  </div>
+                  <p className="text-xs text-emerald-800 mb-3">
+                    Tap below to open WhatsApp with your booking details pre-filled and send it to the organizer.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {b.whatsapp_share_urls.map((w, i) => (
+                      <a
+                        key={w.phone}
+                        href={w.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="pill-btn flex-1 justify-center"
+                        style={{ background: "linear-gradient(135deg, #25D366 0%, #128C7E 100%)", boxShadow: "0 8px 24px rgba(37, 211, 102, 0.35)" }}
+                        data-testid={`whatsapp-notify-${i}`}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Notify on WhatsApp ({w.phone})
+                      </a>
+                    ))}
                   </div>
                 </div>
               )}
@@ -152,8 +181,8 @@ export default function Confirmation() {
           <div className="mt-8 pt-6 border-t border-amber-200">
             <p className="text-xs text-slate-500 mb-3">Need help? Reach the organizers:</p>
             <div className="flex flex-wrap gap-3">
-              <a href="tel:+917483557316" className="pill-btn-outline text-sm"><Phone className="w-4 h-4 mr-2" /> Kiran</a>
-              <a href="tel:+919844912006" className="pill-btn-outline text-sm"><Phone className="w-4 h-4 mr-2" /> Rahul</a>
+              <a href="https://wa.me/917483557316" target="_blank" rel="noreferrer" className="pill-btn-outline text-sm inline-flex"><MessageCircle className="w-4 h-4 mr-2 text-emerald-600" /> +91 7483 557 316</a>
+              <a href="https://wa.me/919844912006" target="_blank" rel="noreferrer" className="pill-btn-outline text-sm inline-flex"><MessageCircle className="w-4 h-4 mr-2 text-emerald-600" /> +91 98449 12006</a>
             </div>
             <p className="text-xs text-slate-500 mt-6 leading-relaxed">
               Alcoholic beverages available for purchase at the venue for guests aged 21+. Food & drinks not included.

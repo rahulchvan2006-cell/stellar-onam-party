@@ -1,0 +1,33 @@
+{
+  "summary": "Tested the wa.me WhatsApp deep-link fallback (backend URL construction + frontend popup/Step 3 block) plus full regression of booking/admin flows. Added TestWhatsAppShareUrls (3 tests) to /app/backend/tests/backend_test.py — 29 passed, 1 skipped, 0 failed. Playwright verified: booking submit opens a WhatsApp deep-link popup (wa.me redirects to api.whatsapp.com/send with correct phone + pre-filled text), navigation to /booking/{id}, Step 3 green block with whatsapp-notify-0/1 anchors (hrefs https://wa.me/917483557316 and https://wa.me/919844912006 with encoded booking name/amount/qty/id/status), screenshot upload -> status awaiting verification + share text updates, admin login stellar2026, has_screenshot 'View' link, and confirm updates row to CONFIRMED. All TEST_QA data purged after the run.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/bookings/{id}/upload-screenshot", "issue": "Returns only {ok,status} — no whatsapp_share_urls/booking payload, so the frontend must re-GET. Not a defect, just noted; test adjusted to GET after upload."},
+      {"endpoint": "pytest TestAdminActions::test_reject_flow_releases_hold", "issue": "State-dependent/flaky (~1 in 2 runs) when many held bookings accumulate from parallel workers: assert abs(held - pending_qty) <= 2 failed with 22 vs 16. Passes on a clean bookings collection. Consider making the assertion delta-based instead of absolute."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Booking submit -> WhatsApp popup", "issue": "Works, but note the popup lands on api.whatsapp.com/send (wa.me 302) and WhatsApp's redirect mangles the leading 🌺 emoji to U+FFFD (%EF%BF%BD) in the forwarded text. Anchor hrefs on the confirmation page keep the correct %F0%9F%8C%BA. Cosmetic only; if you want a guaranteed clean message, drop the emoji from the first line of _wa_share_url().", "affected_selectors": ["booking-submit-btn", "whatsapp-notify-0"]}
+    ],
+    "design_issues": [
+      {"screen": "Confirmation /booking/{id}", "issues": ["Step 3 WhatsApp block is hidden once status = confirmed (block is inside the !confirmed branch), so a confirmed guest can no longer re-send details — only the small 'Need help' wa.me links remain. Intentional? Otherwise move the block outside the !confirmed conditional."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/backend/tests/purge_test_qa.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": ["Optional: remove leading emoji in _wa_share_url() to avoid U+FFFD mangling via api.whatsapp.com redirect", "Optional: decide whether Step 3 WhatsApp block should also show for confirmed bookings", "Optional: make test_reject_flow_releases_hold delta-based (flaky on dirty DB)"],
+  "critical_code_review_comments": [
+    "_wa_share_url() reads doc['full_name'|'phone'|'email'|'amount'|'status'] with direct indexing — safe today since booking_doc_to_out already assumes them, but any legacy/partial doc would raise 500 on GET /api/bookings/{id}.",
+    "ORGANIZER_PHONES has an inline default in code ('+917483...'), which contradicts fail-fast env policy; .env already provides it."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py", "/app/backend/tests/purge_test_qa.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "Created and then deleted TEST_QA bookings (API + 2 Playwright bookings). Remaining non-test rows untouched: 'Rahul Chavan G' (awaiting_verification) and 'Preview User' (pending).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Admin password stellar2026 (from /app/memory/test_credentials.md)",
+  "context_for_next_testing_agent": "backend_test.py now has TestWhatsAppShareUrls covering POST /api/bookings and GET /api/bookings/{id} whatsapp_share_urls shape (2 organizers, +91 phones, https://wa.me/91..., decoded text contains name/amount/qty/id-8/status). Run `python /app/backend/tests/purge_test_qa.py` before and after pytest — held-slot accumulation makes test_reject_flow_releases_hold flaky. Hidden file input needs state='attached' in Playwright ([data-testid=screenshot-input]). Admin action testids are confirm-{id} / reject-{id} / view-screenshot-{id} / booking-row-{id}.",
+  "rca_of_the_issue": "No product defect found for the reported WhatsApp gap: backend builds correct wa.me deep links per organizer and the frontend opens the first one inside the click gesture (not popup-blocked in Chromium) plus renders both Notify buttons on the confirmation page. The only failures during this run were my initial over-strict assertions (upload endpoint payload, wa.me redirect host) which I corrected in the test code."
+}

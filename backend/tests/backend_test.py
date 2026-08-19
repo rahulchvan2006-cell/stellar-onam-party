@@ -3,6 +3,7 @@ import base64
 import io
 import os
 import re
+from urllib.parse import unquote
 
 import pytest
 import requests
@@ -363,3 +364,59 @@ class TestAdminActions:
             timeout=30,
         )
         assert up.status_code == 400
+
+
+
+# ---- Module: WhatsApp wa.me deep-link share URLs ----
+class TestWhatsAppShareUrls:
+    EXPECTED_PHONES = ["+917483557316", "+919844912006"]
+
+    def _assert_shape(self, data):
+        urls = data.get("whatsapp_share_urls")
+        assert isinstance(urls, list), f"whatsapp_share_urls missing/not list: {urls!r}"
+        assert len(urls) == len(self.EXPECTED_PHONES), f"expected {len(self.EXPECTED_PHONES)} entries, got {urls}"
+        for i, item in enumerate(urls):
+            assert item["phone"] == self.EXPECTED_PHONES[i]
+            assert item["phone"].startswith("+91")
+            assert item["url"].startswith("https://wa.me/91"), item["url"]
+            assert item["label"] == f"Organizer {i+1}"
+            decoded = unquote(item["url"].split("?text=", 1)[1])
+            assert "TEST_QA User" in decoded
+            assert f"Amount: ₹{data['amount']}" in decoded
+            assert f"Tickets: {data['quantity']}" in decoded
+            assert data["id"][:8] in decoded
+        return urls
+
+    def test_create_booking_returns_share_urls(self, api, created_ids):
+        r = make_booking(api, 2)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        created_ids.append(d["id"])
+        urls = self._assert_shape(d)
+        assert urls[0]["url"].startswith("https://wa.me/917483557316?text=")
+        assert urls[1]["url"].startswith("https://wa.me/919844912006?text=")
+
+    def test_get_booking_returns_share_urls(self, api, created_ids):
+        r = make_booking(api, 1)
+        bid = r.json()["id"]
+        created_ids.append(bid)
+        g = api.get(f"{BASE_URL}/api/bookings/{bid}", timeout=30)
+        assert g.status_code == 200
+        d = g.json()
+        urls = self._assert_shape(d)
+        assert "PENDING" in unquote(urls[0]["url"])
+
+    def test_share_url_reflects_status_after_upload(self, api, created_ids):
+        r = make_booking(api, 1)
+        bid = r.json()["id"]
+        created_ids.append(bid)
+        up = api.post(
+            f"{BASE_URL}/api/bookings/{bid}/upload-screenshot",
+            files={"file": ("p.png", io.BytesIO(PNG_1PX), "image/png")},
+            timeout=30,
+        )
+        assert up.status_code == 200, up.text
+        # upload endpoint returns only {ok,status}; share urls come from GET
+        d = api.get(f"{BASE_URL}/api/bookings/{bid}", timeout=30).json()
+        urls = self._assert_shape(d)
+        assert "AWAITING VERIFICATION" in unquote(urls[0]["url"])
