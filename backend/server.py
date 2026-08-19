@@ -298,7 +298,6 @@ async def create_booking(payload: BookingCreate, background_tasks: BackgroundTas
         "updated_at_iso": iso(now()),
     }
     await db.bookings.insert_one(doc)
-    background_tasks.add_task(push_callmebot, _booking_summary_text(doc))
     return booking_doc_to_out(doc)
 
 

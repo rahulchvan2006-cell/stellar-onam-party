@@ -72,7 +72,7 @@ export default function Confirmation() {
                 </div>
               </div>
               <p className="text-sm text-emerald-50">
-                Your Onam Party pass is confirmed. E-ticket sent to your email — show it (or the QR) at the gate.
+                Your Onam Party pass has been sent to your WhatsApp ({b.phone}). Show it at the gate.
               </p>
             </div>
           )}
@@ -85,15 +85,15 @@ export default function Confirmation() {
               {confirmed
                 ? "You're In!"
                 : awaiting
-                ? "Payment Under Review"
+                ? "Awaiting Verification"
                 : "Booking Received!"}
             </h1>
             <p className="text-slate-600">
               {confirmed
-                ? "Show this screen or the emailed e-ticket at the venue entry."
+                ? "Your pass has been sent to your WhatsApp. Show this or the DM at the venue entry."
                 : awaiting
-                ? "We received your screenshot. Once we verify the amount hit our account, we'll confirm here and via WhatsApp."
-                : "Complete the UPI payment below to reserve your slot."}
+                ? "We received your payment screenshot. Please wait up to 2 hours — we'll verify manually and DM your pass to your WhatsApp."
+                : "Complete the UPI payment below and upload the screenshot to reserve your slot."}
             </p>
           </div>
 
@@ -164,39 +164,17 @@ export default function Confirmation() {
               </button>
 
               {b.screenshot_uploaded && (
-                <div className="rounded-xl bg-green-50 border border-green-200 p-4 flex items-start gap-3 mb-4">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 shrink-0" />
-                  <div className="text-sm text-green-900">
-                    <b>Screenshot received.</b> Booking held for you. Notify the organizers on WhatsApp below so they can confirm faster.
-                  </div>
-                </div>
-              )}
-
-              {/* Notify Organizer on WhatsApp — auto-fills booking details */}
-              {b.whatsapp_share_urls?.length > 0 && (
-                <div className="rounded-xl bg-emerald-50 border-2 border-emerald-300 p-5 mt-2">
-                  <div className="flex items-center gap-2 mb-3">
-                    <MessageCircle className="w-5 h-5 text-emerald-700" />
-                    <p className="font-semibold text-emerald-900">Step 3 · Send Details on WhatsApp</p>
-                  </div>
-                  <p className="text-xs text-emerald-800 mb-3">
-                    Tap below to open WhatsApp with your booking details pre-filled and send it to the organizer.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    {b.whatsapp_share_urls.map((w, i) => (
-                      <a
-                        key={w.phone}
-                        href={w.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="pill-btn flex-1 justify-center"
-                        style={{ background: "linear-gradient(135deg, #25D366 0%, #128C7E 100%)", boxShadow: "0 8px 24px rgba(37, 211, 102, 0.35)" }}
-                        data-testid={`whatsapp-notify-${i}`}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        Notify on WhatsApp ({w.phone})
-                      </a>
-                    ))}
+                <div className="rounded-xl bg-blue-50 border-2 border-blue-300 p-5 mt-2">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="w-6 h-6 text-blue-700 mt-0.5 shrink-0" />
+                    <div className="text-sm text-blue-950 leading-relaxed">
+                      <p className="font-bold text-base mb-1">Payment screenshot received ✓</p>
+                      <p>
+                        Your details have been sent to <b>Kiran</b> and <b>Rahul</b> on WhatsApp.
+                        Please wait up to <b>2 hours</b> — we'll manually verify the transaction and
+                        <b> DM your pass directly to your WhatsApp number</b> ({b.phone}).
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -205,17 +183,8 @@ export default function Confirmation() {
 
           {confirmed && (
             <div className="mb-6">
-              <a
-                href={`${process.env.REACT_APP_BACKEND_URL}/api/tickets/${b.id}/pdf`}
-                target="_blank"
-                rel="noreferrer"
-                className="pill-btn w-full justify-center text-lg"
-                data-testid="download-eticket-btn"
-              >
-                <Upload className="w-5 h-5 mr-2 rotate-180" /> Download E-Ticket (PDF)
-              </a>
-              <p className="text-xs text-center text-slate-500 mt-2">
-                Show this PDF or its QR code at the entry gate.
+              <p className="text-sm text-slate-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                Your pass has been DM'd to your WhatsApp ({b.phone}) by the organizers.
               </p>
             </div>
           )}

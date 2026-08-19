@@ -35,13 +35,6 @@ export default function BookingDialog({ open, onOpenChange, remaining }) {
     setLoading(true);
     try {
       const { data } = await api.post("/bookings", { ...form, pass_type: "early_bird" });
-      // Auto-open WhatsApp with booking details to first organizer, in the same
-      // user-gesture click so browsers don't block the popup.
-      const wa = data?.whatsapp_share_urls?.[0]?.url;
-      if (wa) {
-        window.open(wa, "_blank", "noopener,noreferrer");
-      }
-      toast.success("Booking created! Complete UPI payment.");
       onOpenChange(false);
       navigate(`/booking/${data.id}`);
     } catch (err) {
