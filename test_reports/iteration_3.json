@@ -1,0 +1,41 @@
+{
+  "summary": "Re-verified visual fixes (hero palm frames + nav wordmark) and full functional regression. Backend: 26 pytest tests (25 pass, 1 new test exposes has_screenshot regression, 1 skipped by design). Frontend: E2E booking -> QR -> upload proof -> admin login -> confirm -> slot decrement all work. Two visual/UI defects found: (1) LEFT palm frame still renders a hard dark vertical seam at its inner edge on both desktop 1440px and mobile 390px (mask direction is mirrored by .palm-left transform: scaleX(-1)); (2) nav 'Book Now' pill is visible on mobile and overlaps/obscures the STELLAR wordmark because .pill-btn-outline's display:inline-flex overrides Tailwind's `hidden`. Backend regression: admin bookings list always returns has_screenshot=false, so admin can never open uploaded proofs. Test bookings purged (0 bookings left).",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "GET /api/admin/bookings", "issue": "has_screenshot is always false. The Mongo projection {'screenshot': 0} strips the field before bool(d.get('screenshot')) is evaluated (server.py:249/264). Verified: 4 bookings in awaiting_verification with proofs returned has_screenshot=false while GET /api/admin/bookings/{id}/screenshot returned 200. Admin UI therefore never shows the 'View' link -> proofs cannot be reviewed. Fix: keep a lightweight flag, e.g. project screenshot_mime (or use aggregation $addFields with $toBool) and derive has_screenshot from that.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "GET /api/event/info", "issue": "Pending holds expire only after 24h and there is no cleanup job; abandoned bookings block slots for a full day (informational)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Landing hero — left palm frame", "issue": "Hard dark vertical seam remains at the inner edge of the LEFT palm strip (desktop x=320: column mean brightness 132 -> 203 in one pixel; mobile x=160: 155 -> 178). Root cause: .palm-left uses transform: scaleX(-1) (index.css:174) which mirrors the inline maskImage 'linear-gradient(to right, black 40%, transparent 100%)', so the opaque end of the mask lands on the inner edge instead of the outer edge. Right frame (no transform) fades correctly. Fix: use 'to left' gradient for the mirrored image (or drop scaleX and mirror via a separate mask).", "selector": ".palm-left", "priority": "HIGH"},
+      {"component": "Nav Book Now button", "issue": "Button has classes 'hidden md:inline-flex pill-btn-outline', but .pill-btn-outline { display: inline-flex } in index.css (loaded after Tailwind utilities) overrides `hidden`, so at 390px the pill renders at x=218 and overlaps the .stellar-wordmark (STELLAR text is clipped/unreadable). Fix: add md: prefix guard via a wrapper, or use `md:!inline-flex`/`hidden!` important variant, or gate the button with a JS/CSS media query.", "selector": "[data-testid=\"nav-book-btn\"]", "priority": "HIGH"},
+      {"component": "Admin bookings table", "issue": "SCREENSHOT column shows '—' for every row (including awaiting_verification rows with proofs) and view-screenshot-{id} link never renders — direct consequence of the backend has_screenshot bug.", "selector": "[data-testid=\"bookings-table\"]", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Landing hero (desktop 1440 / mobile 390)", "issues": ["No horizontal overflow (scrollWidth == innerWidth on both breakpoints) — OK", "Wordmark frosted plate itself reads clearly with gold Cinzel text against sky on desktop — OK", "Left/right palm frames are asymmetric because only the right one fades"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix admin_list_bookings has_screenshot (server.py) so uploaded proofs are visible to admin",
+    "Fix left palm mask direction (.palm-left scaleX(-1) mirrors the mask) to remove the hard dark vertical seam",
+    "Stop nav Book Now pill from rendering on mobile (specificity conflict between .pill-btn-outline display and Tailwind hidden)"
+  ],
+  "critical_code_review_comments": [
+    "server.py:249 — projection excludes 'screenshot' yet line 264 derives has_screenshot from it; derive the flag from screenshot_mime or an aggregation stage instead.",
+    "index.css:174 — .palm-left transform: scaleX(-1) inverts any mask/gradient applied inline; masks must be authored in the flipped coordinate space.",
+    "index.css:140 — custom component classes that hardcode `display` will always defeat Tailwind display utilities (hidden/block); prefer utility-only styling or !important variants."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "96% (25/26 assertions passing; 1 real regression)", "frontend": "80% (core flows pass, 2 visual defects + admin screenshot column broken)"},
+  "seed_data_creation": "Created TEST_QA bookings via API and one via UI (TEST_QA Playwright); all 36 test bookings purged afterwards — bookings collection is now empty.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "Admin password stellar2026 (from /app/memory/test_credentials.md)",
+  "context_for_next_testing_agent": "backend_test.py was made parallel-safe (delta-based assertions for confirm/reject) and now contains test_admin_list_has_screenshot_flag_after_upload which currently FAILS by design until the projection bug is fixed. Verify visuals by measuring column-mean brightness across x=320 (desktop) / x=160 (mobile) — a jump >20 indicates the seam is still present. Also re-check nav-book-btn is_visible() == False at 390px.",
+  "rca_of_the_issue": "1) Palm seam: inline mask gradient direction 'to right' is mirrored by .palm-left { transform: scaleX(-1) }, placing the fully opaque mask stop at the inner edge -> hard cut against the sky. 2) Mobile nav overlap: .pill-btn-outline sets display:inline-flex with equal specificity but later source order than Tailwind's .hidden, so display:none is overridden. 3) has_screenshot: Mongo projection removes the screenshot field before the Python bool() check."
+}

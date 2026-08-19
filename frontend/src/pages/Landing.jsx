@@ -45,20 +45,15 @@ export default function Landing() {
   return (
     <div className="min-h-screen pattern-bg pb-24 md:pb-0">
       {/* NAV */}
-      <nav className="absolute top-0 left-0 right-0 z-40 px-4 sm:px-10 py-4 sm:py-5 flex items-center justify-center">
-        <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-slate-900/75 backdrop-blur-md border border-amber-300/40 shadow-lg">
-          <Flower2 className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
-          <span className="font-script text-lg sm:text-2xl leading-none gold-text drop-shadow-sm">
-            Stellar
-          </span>
-          <span className="font-display text-[10px] sm:text-xs font-bold tracking-[0.28em] text-amber-200/90 uppercase pt-0.5">
-            Presents
-          </span>
+      <nav className="absolute top-0 left-0 right-0 z-40 px-4 sm:px-10 py-5 sm:py-6 flex items-center justify-center">
+        <div className="stellar-wordmark on-dark hero-lift">
+          <span className="name text-2xl sm:text-3xl md:text-4xl">STELLAR</span>
+          <span className="sub text-[9px] sm:text-[11px]">ENTERTAINMENTS</span>
         </div>
         <button
           data-testid="nav-book-btn"
           onClick={() => setOpenBooking(true)}
-          className="hidden md:inline-flex pill-btn-outline absolute right-10"
+          className="pill-btn-outline hidden md:inline-flex absolute right-10"
         >
           Book Now
         </button>
@@ -66,19 +61,35 @@ export default function Landing() {
 
       {/* HERO */}
       <section className="relative sky-bg overflow-hidden min-h-screen flex flex-col justify-center items-center text-center px-5 pt-20 pb-16 grain-overlay">
-        {/* palm leaves */}
-        <img
-          src={PALM}
-          alt=""
-          className="absolute top-0 left-0 w-48 sm:w-72 md:w-96 h-full object-cover opacity-90 palm-left pointer-events-none"
-          style={{ maskImage: "linear-gradient(to right, black 30%, transparent 100%)", WebkitMaskImage: "linear-gradient(to right, black 30%, transparent 100%)" }}
-        />
-        <img
-          src={PALM}
-          alt=""
-          className="absolute top-0 right-0 w-48 sm:w-72 md:w-96 h-full object-cover opacity-90 pointer-events-none"
-          style={{ maskImage: "linear-gradient(to left, black 30%, transparent 100%)", WebkitMaskImage: "linear-gradient(to left, black 30%, transparent 100%)" }}
-        />
+        {/* palm leaves — blended with sky */}
+        <div className="absolute inset-y-0 left-0 w-40 sm:w-64 md:w-80 pointer-events-none overflow-hidden">
+          <img
+            src={PALM}
+            alt=""
+            className="w-full h-full object-cover palm-left"
+            style={{
+              mixBlendMode: "multiply",
+              filter: "saturate(1.2) brightness(1.05)",
+              maskImage: "linear-gradient(to left, black 40%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to left, black 40%, transparent 100%)",
+            }}
+          />
+        </div>
+        <div className="absolute inset-y-0 right-0 w-40 sm:w-64 md:w-80 pointer-events-none overflow-hidden">
+          <img
+            src={PALM}
+            alt=""
+            className="w-full h-full object-cover"
+            style={{
+              mixBlendMode: "multiply",
+              filter: "saturate(1.2) brightness(1.05)",
+              maskImage: "linear-gradient(to left, black 40%, transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to left, black 40%, transparent 100%)",
+            }}
+          />
+        </div>
+        {/* soft sky wash to keep hero luminous */}
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(180deg, rgba(107,182,216,0.15) 0%, rgba(255,255,255,0) 40%, rgba(231,241,227,0.55) 100%)" }} />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -390,8 +401,9 @@ export default function Landing() {
       <footer className="bg-slate-900 text-slate-200 py-14 px-5">
         <div className="max-w-5xl mx-auto grid md:grid-cols-3 gap-10">
           <div>
-            <div className="font-display text-sm font-bold tracking-[0.25em] gold-text uppercase mb-3">
-              Stellar Entertainment
+            <div className="stellar-wordmark on-dark mb-3">
+              <span className="name text-lg">STELLAR</span>
+              <span className="sub text-[8px]">ENTERTAINMENTS</span>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed">
               Bringing the vibe of Kerala to Namma Mysore. Onam Party 2026 — one night, endless memories.

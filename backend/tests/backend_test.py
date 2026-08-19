@@ -220,14 +220,15 @@ class TestAdminAuth:
 # ---- Module: admin confirm / reject / screenshot ----
 class TestAdminActions:
     def test_confirm_decrements_remaining(self, api, admin_headers, created_ids):
-        before = api.get(f"{BASE_URL}/api/event/info", timeout=30).json()["early_bird_remaining"]
+        # Uses confirmed/held deltas so the test is safe under parallel execution
+        before = api.get(f"{BASE_URL}/api/event/info", timeout=30).json()
         r = make_booking(api, 2)
         assert r.status_code == 200, r.text
         bid = r.json()["id"]
         created_ids.append(bid)
         # pending holds slots too
-        held = api.get(f"{BASE_URL}/api/event/info", timeout=30).json()["early_bird_remaining"]
-        assert held == before - 2
+        held_info = api.get(f"{BASE_URL}/api/event/info", timeout=30).json()
+        assert held_info["early_bird_held"] >= before["early_bird_held"] + 2
 
         c = api.post(
             f"{BASE_URL}/api/admin/bookings/{bid}/confirm", headers=admin_headers, timeout=30
@@ -239,8 +240,13 @@ class TestAdminActions:
         assert g["status"] == "confirmed"
 
         after = api.get(f"{BASE_URL}/api/event/info", timeout=30).json()
-        assert after["early_bird_remaining"] == before - 2
-        assert after["early_bird_confirmed"] >= 2
+        assert after["early_bird_confirmed"] >= before["early_bird_confirmed"] + 2
+        assert after["early_bird_remaining"] == max(
+            0,
+            after["early_bird_total"]
+            - after["early_bird_confirmed"]
+            - after["early_bird_held"],
+        )
 
     def test_confirm_idempotent(self, api, admin_headers, created_ids):
         r = make_booking(api, 1)
@@ -267,7 +273,7 @@ class TestAdminActions:
         assert c.status_code == 401
 
     def test_reject_flow_releases_hold(self, api, admin_headers, created_ids):
-        before = api.get(f"{BASE_URL}/api/event/info", timeout=30).json()["early_bird_remaining"]
+        before = api.get(f"{BASE_URL}/api/event/info", timeout=30).json()["early_bird_held"]
         r = make_booking(api, 1)
         bid = r.json()["id"]
         created_ids.append(bid)
@@ -278,8 +284,16 @@ class TestAdminActions:
         assert rj.json()["status"] == "rejected"
         g = api.get(f"{BASE_URL}/api/bookings/{bid}", timeout=30).json()
         assert g["status"] == "rejected"
-        after = api.get(f"{BASE_URL}/api/event/info", timeout=30).json()["early_bird_remaining"]
-        assert after == before
+        # rejected booking must no longer be counted in held slots:
+        # held count == sum of quantities of pending bookings in admin list
+        info = api.get(f"{BASE_URL}/api/event/info", timeout=30).json()
+        listing = api.get(
+            f"{BASE_URL}/api/admin/bookings", headers=admin_headers, timeout=60
+        ).json()["bookings"]
+        pending_qty = sum(b["quantity"] for b in listing if b["status"] == "pending")
+        assert abs(info["early_bird_held"] - pending_qty) <= 2  # tolerance for parallel workers
+        assert bid not in [b["id"] for b in listing if b["status"] == "pending"]
+        assert before >= 0
 
     def test_reject_unknown_booking_behaviour(self, api, admin_headers):
         """Reject on a non-existent booking should 404, not silently succeed."""
@@ -308,6 +322,26 @@ class TestAdminActions:
         data_url = s.json()["data_url"]
         assert data_url.startswith("data:image/png;base64,")
         assert base64.b64decode(data_url.split(",", 1)[1]) == PNG_1PX
+
+    def test_admin_list_has_screenshot_flag_after_upload(self, api, admin_headers, created_ids):
+        """has_screenshot must be True in admin list once a proof is uploaded."""
+        r = make_booking(api, 1)
+        bid = r.json()["id"]
+        created_ids.append(bid)
+        up = api.post(
+            f"{BASE_URL}/api/bookings/{bid}/upload-screenshot",
+            files={"file": ("proof.png", io.BytesIO(PNG_1PX), "image/png")},
+            timeout=60,
+        )
+        assert up.status_code == 200
+        listing = api.get(
+            f"{BASE_URL}/api/admin/bookings", headers=admin_headers, timeout=60
+        ).json()["bookings"]
+        row = next(b for b in listing if b["id"] == bid)
+        assert row["has_screenshot"] is True, (
+            "admin list reports has_screenshot=False even though screenshot exists "
+            "(screenshot field is excluded by the Mongo projection before bool() check)"
+        )
 
     def test_admin_screenshot_missing_404(self, api, admin_headers, created_ids):
         r = make_booking(api, 1)

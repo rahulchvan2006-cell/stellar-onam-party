@@ -1,0 +1,31 @@
+{
+  "summary": "Final-state verification of iteration_3 fixes. Backend: full pytest suite re-run (26 passed, 1 skipped by design) including the previously failing test_admin_list_has_screenshot_flag_after_upload — has_screenshot is now correctly derived from screenshot_mime. Full happy path verified (POST /api/bookings -> upload proof -> admin login -> confirm -> /api/event/info decrement; reject 404 for unknown id). Frontend: at 1440px nav-book-btn visible top-right, wordmark centered, no seams; at 390px nav-book-btn computed display == 'none' (not visible), wordmark centered at x=195 (exact viewport center), no horizontal overflow. Column-mean brightness scan (iteration_3 methodology) found ZERO jumps >20 across the entire viewport width on both 1440px and 390px — both palm frames now fade cleanly, left seam is gone. stellar-wordmark border computed as 'none 0px' for both nav and footer variants. Admin UI shows the 'View' link for bookings with proofs and the preview modal renders the uploaded image (naturalWidth/Height = 1x1 test PNG). All TEST_QA bookings purged (13 deleted); 1 pre-existing real booking (Rahul Chavan G, awaiting_verification) left untouched.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/event/info", "issue": "count_held_slots() only counts status=='pending'. Once a guest uploads payment proof the booking becomes 'awaiting_verification' and its slots stop being held, so early_bird_remaining goes back up and the same seats can be sold twice before the admin confirms. Verified live: 1 awaiting_verification booking exists yet early_bird_held=0 and remaining=45. Suggest including 'awaiting_verification' in the held pipeline."},
+      {"endpoint": "GET /api/event/info", "issue": "Pending holds only expire after 24h with no cleanup job (carried over, informational)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Landing hero @390px", "issues": ["Cosmetic only: palm fronds are dense directly behind the ONAM/Party headline on mobile (masks meet near center at 390px), slightly reducing headline contrast — still legible, no action strictly required."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": ["Optional: include 'awaiting_verification' bookings in count_held_slots() to prevent double-selling slots between proof upload and admin confirmation."],
+  "critical_code_review_comments": [
+    "server.py count_held_slots(): status filter limited to 'pending' leaves awaiting_verification bookings uncounted — inventory can be oversold.",
+    "Admin row action buttons lack per-row data-testid for Confirm/Reject (view-screenshot-{id} exists but confirm-btn-{id} does not); add them for deterministic E2E coverage."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (26/26 executed tests pass, 1 skipped by design)", "frontend": "100% of the 6 requested verification points pass"},
+  "seed_data_creation": "Created TEST_QA bookings via API/pytest plus one 'TEST_QA Screenshot' booking with an uploaded proof for the admin UI check; all 13 TEST_QA rows deleted afterwards. Event info back to 45/45 remaining.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Admin password stellar2026 (/app/memory/test_credentials.md)",
+  "context_for_next_testing_agent": "All 4 iteration_3 regressions are fixed and verified. backend_test.py is parallel-safe and fully green. Remaining known gap: awaiting_verification bookings are not counted as held slots (possible overselling). Visual methodology: column-mean brightness scan over the top 700px, jump >20 = seam; currently 0 jumps at both 1440 and 390. One real (non-test) booking exists in the DB — do not delete it.",
+  "rca_of_the_issue": "N/A — previously reported defects (Mongo projection stripping 'screenshot', mirrored mask direction on .palm-left, .pill-btn-outline display overriding Tailwind 'hidden', wordmark border) are all resolved in the current code and verified live."
+}

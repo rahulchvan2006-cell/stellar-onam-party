@@ -106,7 +106,7 @@ async def count_held_slots() -> int:
     pipeline = [
         {"$match": {
             "pass_type": "early_bird",
-            "status": "pending",
+            "status": {"$in": ["pending", "awaiting_verification"]},
             "created_at_iso": {"$gte": iso(expiry_cutoff)},
         }},
         {"$group": {"_id": None, "total": {"$sum": "$quantity"}}},
@@ -246,7 +246,10 @@ async def admin_login(payload: AdminLogin):
 
 @api_router.get("/admin/bookings")
 async def admin_list_bookings(_: bool = Depends(require_admin)):
-    docs = await db.bookings.find({}, {"_id": 0, "screenshot": 0, "qr_data_url": 0}).sort("created_at_iso", -1).to_list(500)
+    docs = await db.bookings.find(
+        {},
+        {"_id": 0, "screenshot": 0, "qr_data_url": 0},
+    ).sort("created_at_iso", -1).to_list(500)
     confirmed = await count_confirmed_slots()
     held = await count_held_slots()
     return {
@@ -261,7 +264,7 @@ async def admin_list_bookings(_: bool = Depends(require_admin)):
                 "amount": d["amount"],
                 "status": d["status"],
                 "created_at": d["created_at_iso"],
-                "has_screenshot": bool(d.get("screenshot")),
+                "has_screenshot": bool(d.get("screenshot_mime")),
             }
             for d in docs
         ],
