@@ -1,0 +1,40 @@
+{
+  "summary": "Smoke tested Onam booking backend + frontend. Event info, admin login, admin bookings list, admin auth header enforcement, and landing/admin UI all work. Booking creation is BLOCKED by a broken email-validator==2.3.0 that rejects every valid email with 'must have an @-sign' — confirmed by isolated pydantic test locally. This cascades to block upload-screenshot, admin confirm/reject, screenshot fetch, and 409 over-quantity paths, plus the frontend BookingDialog submit.",
+  "tested_scope": ["backend", "frontend", "auth", "integration"],
+  "passed": [
+    "GET /api/event/info -> 200, returns upi_id 7483557316-3@ybl and slots 0/0/45",
+    "POST /api/admin/login wrong password -> 401 {detail: Invalid password}",
+    "POST /api/admin/login stellar2026 -> 200 {ok:true, token}",
+    "GET /api/admin/bookings without header -> 401; with X-Admin-Password header -> 200 with bookings[] and stats{confirmed_slots,held_slots,remaining_slots,total_slots,revenue}",
+    "Landing / renders: hero-book-btn, sticky-book-btn, slots-badge ('Early Bird — Only 45 of 45 slots left!'), BookingDialog opens with all inputs",
+    "/admin renders admin-password-input; wrong password -> 'Invalid password' error visible; stellar2026 -> dashboard with stats cards (Confirmed 0/45, Held 0, Remaining 45, Revenue) and bookings-table with 'No bookings yet'"
+  ],
+  "failed": [
+    {
+      "area": "backend / dependency",
+      "issue": "email-validator==2.3.0 is broken and rejects every valid email (e.g., [email protected], [email protected]) with 'value is not a valid email address: An email address must have an @-sign.' Confirmed via direct pydantic EmailStr test inside /app/backend (pydantic 2.13.4 + email-validator 2.3.0). This blocks POST /api/bookings entirely -> HTTP 422.",
+      "evidence": "curl POST /api/bookings {full_name,phone,email:'[email protected]',quantity:1} -> 422 with the above detail. Local: `from pydantic import EmailStr; M(e='[email protected]')` raises same error.",
+      "priority": "HIGH"
+    },
+    {
+      "area": "frontend / booking flow",
+      "issue": "Frontend BookingDialog submit does not navigate to /booking/{id}; stays on / (backend 422 above). Also browser-level HTML5 validation tooltip 'Please include an @' appears — email input value on preview appears scrambled by Cloudflare email obfuscation ([email protected] shows as [email protected]).",
+      "evidence": "Playwright: filled [email protected], clicked booking-submit-btn, URL remained https://…/. Screenshot shows Cloudflare-style obfuscation of the email in the input.",
+      "priority": "HIGH"
+    },
+    {
+      "area": "backend (not directly retested, blocked)",
+      "issue": "Could not verify POST /api/bookings 409 over-quantity, upload-screenshot, GET /api/bookings/{id}, admin confirm/reject, admin screenshot data_url, and slot decrement after confirm — all depend on being able to create a booking.",
+      "evidence": "Every attempted booking returns 422 due to email-validator bug.",
+      "priority": "HIGH"
+    }
+  ],
+  "action_items": [
+    "Pin email-validator to a working version (e.g., 2.2.0) in /app/backend/requirements.txt, reinstall, and restart backend via supervisor. Then re-run booking + confirm flow.",
+    "After the fix, verify full flow: create booking -> qr_data_url present -> upload screenshot -> admin confirms -> /api/event/info shows remaining=44.",
+    "Investigate Cloudflare Email Protection on preview URL possibly altering user-typed emails in inputs; if the issue is only in preview automation, real users are fine, but the underlying pydantic error still blocks all real bookings."
+  ],
+  "success_rate": {"backend": "45%", "frontend": "60%"},
+  "retest_needed": true,
+  "full_testing_deferred": true
+}

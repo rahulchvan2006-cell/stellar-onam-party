@@ -1,0 +1,51 @@
+{
+  "summary": "Full re-test of Onam Party booking app (backend + frontend). The iteration_1 blocker (email-validator rejecting all emails) is RESOLVED — POST /api/bookings now works end-to-end. Created /app/backend/tests/backend_test.py (26 pytest cases): 24 passed, 1 skipped (409 not reachable while remaining>=10, separately verified), 1 failed (admin reject returns 200 for non-existent booking). Playwright E2E verified the complete happy path: landing -> BookingDialog (2 tickets, total Rs.998) -> POST /bookings -> navigate /booking/{id} -> QR data-url + UPI ID 7483557316-3@ybl rendered -> upload screenshot -> status 'awaiting verification' -> /admin login with stellar2026 -> screenshot preview modal -> confirm -> row shows CONFIRMED -> landing slot badge decremented 43 -> 41. Over-quantity 409 and sold_out=true paths verified by temporarily seeding capacity via Mongo (seed removed afterwards). Mobile 390px: no horizontal overflow, no broken images, sticky CTA works.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/admin/bookings/{id}/reject", "issue": "No existence check — returns 200 {ok:true,status:'rejected'} for a non-existent booking id (update_one matches nothing). Should return 404 like /confirm does. Test: TestAdminActions::test_reject_unknown_booking_behaviour (currently FAILING by design to document the bug)."},
+      {"endpoint": "GET /api/admin/bookings", "issue": "Query is find({}, {'_id':0}) which pulls the full base64 screenshot blob (up to ~6.7MB per booking) for every booking then discards it. Add a projection excluding 'screenshot' to avoid multi-hundred-MB DB reads at 45 bookings."},
+      {"endpoint": "POST /api/admin/login", "issue": "Returns the raw admin password as the 'token'. Frontend stores it in localStorage and resends it as X-Admin-Password on every call — plaintext credential at rest in the browser. No rate limiting, so the single shared password is brute-forceable."},
+      {"endpoint": "config / server.py:34", "issue": "HOLD_MINUTES = 20 is defined but never used; count_held_slots() actually uses a 24-hour cutoff. Pending bookings therefore block slots for 24h instead of the intended 20 min, and there is no job that flips stale pending bookings to 'expired'."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Landing / nav logo", "issue": "'STELLAR ENTERTAINMENT' wordmark is gold/light on the bright palm+sky hero image — effectively illegible on mobile (390px). Needs a scrim, darker text, or solid nav background.", "selector": "header logo text", "priority": "MEDIUM"},
+      {"component": "Confirmation page", "issue": "No polling/refresh — after the admin confirms, the user's /booking/{id} page keeps showing 'AWAITING VERIFICATION' until a manual reload. Consider polling GET /bookings/{id} every ~15s.", "selector": "[data-testid=\"conf-status\"]", "priority": "LOW"},
+      {"component": "Admin.jsx reject()", "issue": "reject() has no try/catch (unlike confirm()). A failed API call produces an unhandled promise rejection and a false 'Rejected' success toast is shown before the await resolves state.", "selector": "[data-testid^=\"reject-\"]", "priority": "MEDIUM"},
+      {"component": "Admin screenshot preview Dialog", "issue": "Console warning: 'Missing `Description` or `aria-describedby={undefined}` for {DialogContent}' — add DialogDescription for a11y.", "selector": "img[alt=\"screenshot\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Landing (mobile 390px)", "issues": ["Logo wordmark contrast against hero photo is far below WCAG AA", "Booking dialog appeared translucent with hero text bleeding through in the screenshot — likely mid-animation, but verify DialogOverlay opacity/backdrop on mobile"]},
+      {"screen": "Confirmation (desktop)", "issues": ["Layout, QR card, UPI pill and CTA all render correctly; no issues found"]},
+      {"screen": "Admin dashboard", "issues": ["Stat cards, status pills and table render correctly; no issues found"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Add existence check to POST /api/admin/bookings/{id}/reject -> 404 when booking not found (only failing pytest case).",
+    "Add {'screenshot': 0} projection to GET /api/admin/bookings to stop reading base64 blobs.",
+    "Wrap Admin.jsx reject() in try/catch and only toast success on a 2xx response.",
+    "Fix landing nav logo contrast over the hero image.",
+    "Decide on hold expiry: either use HOLD_MINUTES (20) in count_held_slots or remove the dead constant; add an expiry sweep so abandoned pending bookings release slots.",
+    "Stop using the admin password as the session token / persisting it in localStorage; add basic rate limiting on /api/admin/login.",
+    "Cleanup: 2 leftover 'Test User' pending bookings (test@example.com, qty 1 each) still hold 2 slots, plus 1 confirmed 'QA Playwright User' (qty 2) from this run. Landing currently shows 41/45. Purge before handoff to the user."
+  ],
+  "critical_code_review_comments": [
+    "admin_reject() calls update_one without checking find_one first — silently succeeds on bad ids; mirror the guard used in admin_confirm().",
+    "admin_list_bookings() loads every document including the base64 screenshot field; add an explicit projection.",
+    "HOLD_MINUTES is dead code — count_held_slots() uses timedelta(hours=24), so the documented 20-minute provisional hold is not implemented and stale pending bookings permanently consume inventory.",
+    "Capacity checks in create_booking and admin_confirm are read-then-write with no atomicity/unique guard — two concurrent requests can oversell the last slot.",
+    "/api/admin/login returns ADMIN_PASSWORD as the token; issue a signed short-lived token instead and never persist the raw password client-side."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py", "/app/test_reports/iteration_2.json"],
+  "success_rate": {"backend": "96%", "frontend": "100%"},
+  "seed_data_creation": "Created and deleted TEST_QA* bookings via API and a temporary TEMPCAP confirmed booking via Mongo to exercise the 409/sold_out paths (both removed). One real E2E booking remains: 'QA Playwright User' / qa.playwright@example.com, qty 2, status confirmed. 2 pre-existing 'Test User' pending bookings were left untouched.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "Admin password stellar2026 (from /app/memory/test_credentials.md) — works via both /api/admin/login and the X-Admin-Password header.",
+  "context_for_next_testing_agent": "Run `python -m pytest tests/backend_test.py -n 0` from /app/backend (serial; slot-count assertions are shared-state sensitive so -n 2 loadscope can race). test_over_quantity_returns_409 self-skips when remaining>=10; to exercise it, insert a confirmed booking with a large quantity directly into db.bookings and delete it after. Only known backend failure is the reject-unknown-booking 404. Remember to purge TEST_QA/QA Playwright bookings from db.bookings so the 45-slot counter is clean.",
+  "rca_of_the_issue": "iteration_1's blocker was a false positive plus a real dependency issue that is now gone: booking creation with valid emails succeeds (EmailStr accepts qa.playwright@example.com both via API and the browser form; the DOM value was verified unmodified, so the 'Cloudflare email obfuscation' theory does not apply). Remaining defects are the missing 404 guard on reject (update_one matched-count never inspected), an unprojected admin query, and the unused HOLD_MINUTES constant."
+}

@@ -1,0 +1,150 @@
+{
+  "theme": "light",
+  "typography": {
+    "fonts": {
+      "headings": "Playfair Display, serif",
+      "brush_script": "Dancing Script, cursive",
+      "body": "Outfit, sans-serif"
+    },
+    "hierarchy": {
+      "h1": "text-5xl sm:text-6xl font-black tracking-tight",
+      "h2": "text-4xl sm:text-5xl font-bold tracking-tight",
+      "h3": "text-2xl sm:text-3xl font-semibold",
+      "h4": "text-xl font-medium",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm uppercase tracking-[0.2em]"
+    },
+    "rules": [
+      "Use 'Playfair Display' for main headings to give a premium, cultural feel.",
+      "Use 'Dancing Script' for the word 'Party' to match the golden brush-script requirement.",
+      "Never use Inter for headings. Use tight letter spacing for headings.",
+      "Body text should be readable geometric sans (Outfit)."
+    ]
+  },
+  "colors": {
+    "palette": {
+      "primary": "#FF8008",
+      "primary_foreground": "#FFFFFF",
+      "secondary": "#D4AF37",
+      "accent": "#F9530B",
+      "background_hero": "linear-gradient(to bottom, #4CA1AF, #C4E0E5)",
+      "background_section": "#FDFBF7",
+      "text_dark": "#0B2046",
+      "text_light": "#FFFFFF"
+    },
+    "tailwind_classes": {
+      "hero_bg": "bg-gradient-to-b from-sky-400 to-sky-200",
+      "section_bg": "bg-amber-50",
+      "text_primary": "text-orange-500",
+      "text_secondary": "text-amber-500",
+      "text_dark": "text-slate-900"
+    },
+    "rules": [
+      "Base background for hero must be a bright blue sky gradient.",
+      "Use warm gold and orange for typography and accents.",
+      "Section backgrounds should be a warm cream to keep it festive and not dark/club.",
+      "Never use pure black; use deep blue or slate-900 instead."
+    ]
+  },
+  "visual_enhancers": {
+    "surfaces": [
+      "Glassmorphism for floating nav or sticky CTA: backdrop-blur-xl bg-white/70 border border-white/40 shadow-lg.",
+      "Cards: Flat cream or white backgrounds with warm golden borders and subtle soft shadows."
+    ],
+    "decorations": [
+      "Use absolute positioned images of palm leaves at the edges of the hero section to frame it.",
+      "Add traditional motifs using Lucide icons: Flower2 (Pookalam), VenetianMask (Kathakali), Sailboat (Houseboat), Flame (Oil Lamp), Leaf (Banana leaves)."
+    ]
+  },
+  "components": {
+    "shadcn": [
+      "Button (Pill-shaped, warm gold/orange gradient backgrounds)",
+      "Card (for Lineup and Tickets)",
+      "Accordion (for FAQs)",
+      "Dialog (for Booking Flow)",
+      "Form & Input (for Admin/Booking details)"
+    ],
+    "custom": [
+      "Countdown Timer (Hero section)",
+      "Sticky Bottom 'Book Now' bar for mobile",
+      "Marquee (react-fast-marquee) for Tagline ribbon"
+    ]
+  },
+  "grids": {
+    "bento": "grid-cols-1 md:grid-cols-8 lg:grid-cols-12 gap-8 to 12 for the Highlights section.",
+    "cards": "grid-cols-1 md:grid-cols-2 gap-8 for Lineup and Tickets."
+  },
+  "layouts": {
+    "mobile_first": true,
+    "spacing": "Generous spacing. Use py-20 or py-24 for sections. Use p-6 or p-8 for cards.",
+    "hero": "min-h-screen relative overflow-hidden flex flex-col justify-center items-center text-center",
+    "sticky_cta": "fixed bottom-0 left-0 w-full p-4 z-50 md:hidden bg-white/80 backdrop-blur-md border-t border-orange-100"
+  },
+  "motion": {
+    "rules": [
+      "Framer Motion for scroll-triggered entrance animations (fade up).",
+      "Hover states on all interactive elements (lift up -translate-y-1, shadow increase).",
+      "Smooth scrolling with Lenis."
+    ]
+  },
+  "accessibility": {
+    "rules": [
+      "Ensure sufficient contrast for white text on sky blue backgrounds. Use subtle text-shadow if needed.",
+      "Add data-testid attributes to all interactive elements.",
+      "Use proper heading hierarchy (H1 -> H2 -> H3)."
+    ]
+  },
+  "media": {
+    "rules": [
+      "Images should not exceed 80vh on mobile.",
+      "Use object-cover and rounded corners for photos.",
+      "Hero palm leaves should be placed using absolute positioning with z-index behind text."
+    ]
+  },
+  "3d_libraries": {
+    "selected": "react-fast-marquee",
+    "reason": "Used for the 'One Vibe. Our People. Endless Memories.' tagline ribbon. No heavy 3D needed to maintain fast loading and festive feel."
+  },
+  "image_urls": {
+    "hero_palm_leaves": {
+      "url": "https://images.pexels.com/photos/7822552/pexels-photo-7822552.jpeg",
+      "description": "Lush green palm trees to be used as framing edges in the hero section."
+    },
+    "palm_leaves_alt": {
+      "url": "https://images.pexels.com/photos/38601629/pexels-photo-38601629.jpeg",
+      "description": "Alternative palm fronds for framing or background textures."
+    },
+    "kerala_band": {
+      "url": "https://images.pexels.com/photos/33284931/pexels-photo-33284931.jpeg",
+      "description": "Vibrant outdoor live band to represent the Kerala Band."
+    },
+    "dj_night": {
+      "url": "https://images.pexels.com/photos/9534908/pexels-photo-9534908.jpeg",
+      "description": "Vibrant concert DJ scene for the DJ Night featuring."
+    }
+  },
+  "instructions_to_main_agent": [
+    "Install required fonts from Google Fonts: Playfair Display, Dancing Script, Outfit.",
+    "Install lucide-react, framer-motion, react-fast-marquee, @radix-ui/react-icons.",
+    "Do NOT use placeholder images. ONLY use the provided image URLs.",
+    "For traditional motifs (pookalam, kathakali, etc.), use Lucide icons creatively (e.g., Flower2, VenetianMask, Sailboat, Flame, Leaf) inside golden circular containers.",
+    "Ensure the hero has a 3D headline effect for 'ONAM' using text-shadows (e.g., text-white drop-shadow-xl) and 'Party' in Dancing Script below it.",
+    "Build a sticky bottom 'Book Now' bar that only shows on mobile, while desktop has the CTA in the nav or hero.",
+    "Create the ticket booking flow using Shadcn Dialog/Modal. Include a simple mock form for Early Bird and General tickets.",
+    "Include an Admin panel route (e.g., /admin) with a simple Shadcn Table for booking management."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Avoid generic, 'on distribution' outputs. Make creative, distinctive frontends that surprise and delight.",
+    "Do not use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition (e.g., transition: all). Add transitions for specific properties excluding transforms.",
+    "You MUST NOT center align the app container in global CSS.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Add data-testid to all interactive elements for robust automated testing."
+  ]
+}
