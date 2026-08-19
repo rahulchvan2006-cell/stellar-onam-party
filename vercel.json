@@ -1,6 +1,6 @@
 {
   "name": "stellar-entertainments",
-  "buildCommand": "cd frontend && npm install && npm run build",
+  "buildCommand": "cd frontend && npm install --legacy-peer-deps && npm run build",
   "outputDirectory": "frontend/build",
   "framework": "create-react-app",
   "rewrites": [
