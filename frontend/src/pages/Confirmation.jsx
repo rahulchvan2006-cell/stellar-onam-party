@@ -8,24 +8,7 @@ export default function Confirmation() {
   const { id } = useParams();
   const [b, setB] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [sent, setSent] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(`sent_${id}`) || "{}");
-    } catch {
-      return {};
-    }
-  });
   const fileRef = useRef(null);
-
-  const markSent = (phone) => {
-    const next = { ...sent, [phone]: true };
-    setSent(next);
-    try {
-      localStorage.setItem(`sent_${id}`, JSON.stringify(next));
-    } catch (_) {
-      /* ignore quota errors (e.g. Safari private mode) */
-    }
-  };
 
   const load = () => api.get(`/bookings/${id}`).then((r) => setB(r.data)).catch(() => {});
   useEffect(() => {
@@ -109,7 +92,7 @@ export default function Confirmation() {
               {confirmed
                 ? "Your pass has been DM'd to your WhatsApp. Show it at the venue entry."
                 : awaiting
-                ? "Payment received. Compulsory: forward the details to both organizers on WhatsApp below. We'll DM your pass within 2 hours."
+                ? "Payment received. Compulsory: forward the details to us on WhatsApp below. We'll DM your pass within 2 hours."
                 : "Complete the UPI payment below and upload the screenshot to reserve your slot."}
             </p>
           </div>
@@ -180,83 +163,40 @@ export default function Confirmation() {
                 {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Upload className="w-4 h-4 mr-2" /> {b.screenshot_uploaded ? "Re-upload Screenshot" : "Upload Payment Screenshot"}</>}
               </button>
 
-              {b.screenshot_uploaded && b.whatsapp_share_urls?.length > 0 && (() => {
-                const allSent = b.whatsapp_share_urls.every((w) => sent[w.phone]);
-                return (
-                  <>
-                    {!allSent && (
-                      <div className="rounded-2xl bg-gradient-to-br from-red-600 to-rose-600 text-white p-6 mt-2 shadow-xl mb-4">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-12 h-12 rounded-full bg-white/25 flex items-center justify-center">
-                            <MessageCircle className="w-6 h-6 text-white" />
-                          </div>
-                          <div>
-                            <p className="text-xs uppercase tracking-widest text-red-100 font-semibold">Compulsory Step</p>
-                            <h2 className="font-display text-2xl font-black">Send Details on WhatsApp</h2>
-                          </div>
-                        </div>
-                        <p className="text-sm text-red-50 leading-relaxed">
-                          Your booking <b>will NOT be confirmed</b> until you send the details to <b>both</b> organizers below.
-                          Tap each button, hit <b>Send</b> in WhatsApp, then mark it done here.
-                        </p>
+              {b.screenshot_uploaded && b.whatsapp_share_urls?.length > 0 && (
+                <>
+                  <div className="rounded-2xl bg-gradient-to-br from-red-600 to-rose-600 text-white p-6 mt-2 shadow-xl mb-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-12 h-12 rounded-full bg-white/25 flex items-center justify-center">
+                        <MessageCircle className="w-6 h-6 text-white" />
                       </div>
-                    )}
-
-                    <div className={`rounded-2xl border-2 p-5 mt-2 ${allSent ? "bg-gradient-to-br from-emerald-500 to-green-600 border-emerald-600 text-white shadow-xl" : "bg-amber-50 border-amber-400"}`}>
-                      <p className={`font-display font-black text-xl mb-1 ${allSent ? "text-white" : "text-slate-900"}`}>
-                        {allSent ? "Details Sent ✓" : "Send to both organizers"}
-                      </p>
-                      <p className={`text-sm mb-4 leading-relaxed ${allSent ? "text-emerald-50" : "text-slate-700"}`}>
-                        {allSent
-                          ? `Your pass will be DM'd within 2 hours to your WhatsApp — +91 ${b.phone}.`
-                          : "Booking + payment screenshot link is pre-filled. Tap the WhatsApp button, hit Send, then tick the checkbox."}
-                      </p>
-                      <div className="space-y-3">
-                        {b.whatsapp_share_urls.map((w, i) => {
-                          const name = i === 0 ? "Kiran" : "Rahul";
-                          const done = !!sent[w.phone];
-                          return (
-                            <div key={w.phone} className={`rounded-xl border-2 p-3 flex items-center justify-between gap-3 flex-wrap ${done ? "bg-white border-emerald-400" : "bg-white border-slate-200"}`}>
-                              <div className="flex items-center gap-3">
-                                <input
-                                  id={`sent-${w.phone}`}
-                                  type="checkbox"
-                                  checked={done}
-                                  onChange={(e) => {
-                                    if (e.target.checked) markSent(w.phone);
-                                    else {
-                                      const next = { ...sent };
-                                      delete next[w.phone];
-                                      setSent(next);
-                                      localStorage.setItem(`sent_${id}`, JSON.stringify(next));
-                                    }
-                                  }}
-                                  className="w-5 h-5 accent-emerald-600 cursor-pointer"
-                                  data-testid={`sent-check-${i}`}
-                                />
-                                <label htmlFor={`sent-${w.phone}`} className="text-sm font-semibold text-slate-800 cursor-pointer">
-                                  {done ? `Sent to ${name} ✓` : `I've sent to ${name}`}
-                                </label>
-                              </div>
-                              <a
-                                href={w.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={() => markSent(w.phone)}
-                                className={`inline-flex items-center px-4 py-2 rounded-full text-white font-semibold text-sm ${done ? "bg-slate-500 hover:bg-slate-600" : "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"}`}
-                                data-testid={`whatsapp-notify-${i}`}
-                              >
-                                <MessageCircle className="w-4 h-4 mr-2" />
-                                {done ? "Re-send" : `Send to ${name}`}
-                              </a>
-                            </div>
-                          );
-                        })}
+                      <div>
+                        <p className="text-xs uppercase tracking-widest text-red-100 font-semibold">Compulsory Step</p>
+                        <h2 className="font-display text-2xl font-black">Send Details on WhatsApp</h2>
                       </div>
                     </div>
-                  </>
-                );
-              })()}
+                    <p className="text-sm text-red-50 leading-relaxed">
+                      Your booking <b>will NOT be confirmed</b> until you tap the button below and hit <b>Send</b> in WhatsApp.
+                      We&apos;ll DM your pass to <b>+91 {b.phone}</b> within 2 hours.
+                    </p>
+                  </div>
+
+                  <a
+                    href={b.whatsapp_share_urls[0].url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pill-btn w-full justify-center text-lg animate-pulse"
+                    style={{ background: "linear-gradient(135deg, #25D366 0%, #128C7E 100%)", boxShadow: "0 8px 24px rgba(37, 211, 102, 0.45)" }}
+                    data-testid="whatsapp-notify-0"
+                  >
+                    <MessageCircle className="w-5 h-5 mr-2" />
+                    Send Details on WhatsApp Now
+                  </a>
+                  <p className="text-xs text-center text-slate-500 mt-2">
+                    Opens WhatsApp with your booking + payment screenshot pre-filled. Just hit Send.
+                  </p>
+                </>
+              )}
             </>
           )}
 
@@ -269,10 +209,9 @@ export default function Confirmation() {
           )}
 
           <div className="mt-8 pt-6 border-t border-amber-200">
-            <p className="text-xs text-slate-500 mb-3">Need help? Reach the organizers:</p>
+            <p className="text-xs text-slate-500 mb-3">Need help? Reach the organizer:</p>
             <div className="flex flex-wrap gap-3">
               <a href="https://wa.me/917483557316" target="_blank" rel="noreferrer" className="pill-btn-outline text-sm inline-flex"><MessageCircle className="w-4 h-4 mr-2 text-emerald-600" /> +91 7483 557 316</a>
-              <a href="https://wa.me/919844912006" target="_blank" rel="noreferrer" className="pill-btn-outline text-sm inline-flex"><MessageCircle className="w-4 h-4 mr-2 text-emerald-600" /> +91 98449 12006</a>
             </div>
             <p className="text-xs text-slate-500 mt-6 leading-relaxed">
               Alcoholic beverages available for purchase at the venue for guests aged 21+. Food & drinks not included.

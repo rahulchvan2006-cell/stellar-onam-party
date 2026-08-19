@@ -411,11 +411,8 @@ export default function Landing() {
           <div>
             <h5 className="font-semibold mb-3 text-white">Contact</h5>
             <div className="space-y-2 text-sm">
-              <a href="tel:+917483557316" className="flex items-center gap-2 hover:text-orange-400" data-testid="contact-kiran">
+              <a href="tel:+917483557316" className="flex items-center gap-2 hover:text-orange-400" data-testid="contact-organizer">
                 <Phone className="w-4 h-4" /> +91 7483 557 316
-              </a>
-              <a href="tel:+919844912006" className="flex items-center gap-2 hover:text-orange-400" data-testid="contact-rahul">
-                <Phone className="w-4 h-4" /> +91 98449 12006
               </a>
             </div>
           </div>
