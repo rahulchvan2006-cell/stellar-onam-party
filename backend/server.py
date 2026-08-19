@@ -10,10 +10,12 @@ import io
 import uuid
 import qrcode
 from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_validator
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta
 from urllib.parse import quote
+import re
+import httpx
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -38,13 +40,83 @@ EARLY_BIRD_PRICE = 499
 EARLY_BIRD_TOTAL_SLOTS = 45
 HOLD_HOURS = 24  # full hold before auto-expiring a pending booking
 
+# CallMeBot WhatsApp push — set the personal API keys per organizer.
+# Each organizer must first send "I allow callmebot to send me messages" to
+# +34 644 44 21 78 on WhatsApp to receive their key. Empty = skip push.
+CALLMEBOT_ORGANIZERS = [
+    {"name": "Kiran", "phone": "917483557316", "api_key": os.environ.get("CALLMEBOT_KEY_KIRAN", "")},
+    {"name": "Rahul", "phone": "919844912006", "api_key": os.environ.get("CALLMEBOT_KEY_RAHUL", "")},
+]
+
+
+async def push_callmebot(text: str) -> list:
+    """Send a WhatsApp message via CallMeBot to each configured organizer.
+    Silently skips any organizer whose api_key is empty. Returns per-org results."""
+    results = []
+    async with httpx.AsyncClient(timeout=15) as client:
+        for org in CALLMEBOT_ORGANIZERS:
+            if not org["api_key"]:
+                results.append({"name": org["name"], "status": "skipped_no_key"})
+                continue
+            try:
+                r = await client.get(
+                    "https://api.callmebot.com/whatsapp.php",
+                    params={"phone": org["phone"], "text": text, "apikey": org["api_key"]},
+                )
+                results.append({"name": org["name"], "status": r.status_code, "ok": r.status_code == 200})
+            except Exception as e:
+                results.append({"name": org["name"], "status": "error", "error": str(e)})
+    return results
+
+
+def _booking_summary_text(doc: dict) -> str:
+    return (
+        "*New Onam Party Booking*\n"
+        f"Name: {doc['full_name']}\n"
+        f"Phone: {doc['phone']}\n"
+        f"Email: {doc['email']}\n"
+        f"Tickets: {doc['quantity']} x Early Bird\n"
+        f"Amount: Rs. {doc['amount']}\n"
+        f"Booking ID: {doc['id'][:8].upper()}\n"
+        f"Status: {doc['status'].replace('_',' ').upper()}"
+    )
+
 # ---- Models ----
+_INDIAN_MOBILE_RE = re.compile(r"^[6-9]\d{9}$")
+
+
+def _normalize_indian_phone(raw: str) -> str:
+    """Return a 10-digit Indian mobile or raise ValueError.
+    Accepts formats: 9844912006, +919844912006, 91 98449 12006, 09844912006."""
+    digits = re.sub(r"\D", "", raw or "")
+    if len(digits) == 12 and digits.startswith("91"):
+        digits = digits[2:]
+    elif len(digits) == 11 and digits.startswith("0"):
+        digits = digits[1:]
+    if not _INDIAN_MOBILE_RE.match(digits):
+        raise ValueError("Enter a valid 10-digit Indian mobile number (starts with 6-9)")
+    return digits
+
+
 class BookingCreate(BaseModel):
     full_name: str
     phone: str
     email: EmailStr
     quantity: int = Field(ge=1, le=20)
     pass_type: str = "early_bird"
+
+    @field_validator("phone")
+    @classmethod
+    def _phone_10_digit_indian(cls, v: str) -> str:
+        return _normalize_indian_phone(v)
+
+    @field_validator("full_name")
+    @classmethod
+    def _name_not_blank(cls, v: str) -> str:
+        v = (v or "").strip()
+        if len(v) < 2:
+            raise ValueError("Enter your full name")
+        return v
 
 
 class BookingOut(BaseModel):
@@ -194,7 +266,7 @@ async def event_info():
 
 
 @api_router.post("/bookings", response_model=BookingOut)
-async def create_booking(payload: BookingCreate):
+async def create_booking(payload: BookingCreate, background_tasks: BackgroundTasks):
     if payload.pass_type != "early_bird":
         raise HTTPException(400, "Only Early Bird pass is available currently")
 
@@ -226,11 +298,12 @@ async def create_booking(payload: BookingCreate):
         "updated_at_iso": iso(now()),
     }
     await db.bookings.insert_one(doc)
+    background_tasks.add_task(push_callmebot, _booking_summary_text(doc))
     return booking_doc_to_out(doc)
 
 
 @api_router.post("/bookings/{booking_id}/upload-screenshot")
-async def upload_screenshot(booking_id: str, file: UploadFile = File(...)):
+async def upload_screenshot(booking_id: str, background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     doc = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Booking not found")
@@ -253,6 +326,12 @@ async def upload_screenshot(booking_id: str, file: UploadFile = File(...)):
             "status": "awaiting_verification",
             "updated_at_iso": iso(now()),
         }},
+    )
+    doc["status"] = "awaiting_verification"
+    background_tasks.add_task(
+        push_callmebot,
+        "Payment screenshot uploaded\n" + _booking_summary_text(doc)
+        + f"\nReview: {PUBLIC_APP_URL or ''}/admin",
     )
     return {"ok": True, "status": "awaiting_verification"}
 

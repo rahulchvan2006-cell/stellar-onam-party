@@ -60,18 +60,39 @@ export default function Confirmation() {
         </Link>
 
         <div className="card-warm p-8 sm:p-10">
+          {confirmed && (
+            <div className="rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 text-white p-6 mb-6 shadow-xl">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-12 h-12 rounded-full bg-white/25 flex items-center justify-center">
+                  <CheckCircle2 className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-emerald-100 font-semibold">Payment Verified</p>
+                  <h2 className="font-display text-2xl sm:text-3xl font-black">Successfully Paid ✓</h2>
+                </div>
+              </div>
+              <p className="text-sm text-emerald-50">
+                Your Onam Party pass is confirmed. E-ticket sent to your email — show it (or the QR) at the gate.
+              </p>
+            </div>
+          )}
+
           <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-300 to-orange-500 flex items-center justify-center mx-auto mb-4">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${confirmed ? "bg-gradient-to-br from-emerald-400 to-green-600" : awaiting ? "bg-gradient-to-br from-blue-400 to-indigo-600" : "bg-gradient-to-br from-amber-300 to-orange-500"}`}>
               {confirmed ? <CheckCircle2 className="w-8 h-8 text-white" /> : <Flower2 className="w-8 h-8 text-white" />}
             </div>
             <h1 className="font-display text-3xl sm:text-4xl font-black text-slate-900 mb-2">
-              {confirmed ? "Confirmed! You're In 🌺" : "Booking Received! 🌺"}
+              {confirmed
+                ? "You're In!"
+                : awaiting
+                ? "Payment Under Review"
+                : "Booking Received!"}
             </h1>
             <p className="text-slate-600">
               {confirmed
-                ? "Show this screen at the venue entry."
+                ? "Show this screen or the emailed e-ticket at the venue entry."
                 : awaiting
-                ? "We're verifying your payment. You'll receive confirmation on WhatsApp/SMS shortly."
+                ? "We received your screenshot. Once we verify the amount hit our account, we'll confirm here and via WhatsApp."
                 : "Complete the UPI payment below to reserve your slot."}
             </p>
           </div>
@@ -82,7 +103,11 @@ export default function Confirmation() {
               <div><span className="text-slate-500">Phone</span><div className="font-semibold text-slate-900">{b.phone}</div></div>
               <div><span className="text-slate-500">Tickets</span><div className="font-semibold text-slate-900">{b.quantity} × Early Bird</div></div>
               <div><span className="text-slate-500">Amount</span><div className="font-display font-black text-orange-600 text-xl" data-testid="conf-amount">₹{b.amount}</div></div>
-              <div className="col-span-2"><span className="text-slate-500">Status</span><div className="font-semibold uppercase text-slate-900" data-testid="conf-status">{b.status.replace("_", " ")}</div></div>
+              <div className="col-span-2"><span className="text-slate-500">Status</span>
+                <div className={`font-semibold uppercase ${confirmed ? "text-emerald-700" : awaiting ? "text-blue-700" : "text-slate-900"}`} data-testid="conf-status">
+                  {confirmed ? "Successfully Paid" : b.status.replace("_", " ")}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -176,6 +201,23 @@ export default function Confirmation() {
                 </div>
               )}
             </>
+          )}
+
+          {confirmed && (
+            <div className="mb-6">
+              <a
+                href={`${process.env.REACT_APP_BACKEND_URL}/api/tickets/${b.id}/pdf`}
+                target="_blank"
+                rel="noreferrer"
+                className="pill-btn w-full justify-center text-lg"
+                data-testid="download-eticket-btn"
+              >
+                <Upload className="w-5 h-5 mr-2 rotate-180" /> Download E-Ticket (PDF)
+              </a>
+              <p className="text-xs text-center text-slate-500 mt-2">
+                Show this PDF or its QR code at the entry gate.
+              </p>
+            </div>
           )}
 
           <div className="mt-8 pt-6 border-t border-amber-200">

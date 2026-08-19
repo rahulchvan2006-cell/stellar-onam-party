@@ -20,8 +20,16 @@ export default function BookingDialog({ open, onOpenChange, remaining }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.full_name || !form.phone || !form.email) {
-      toast.error("Please fill all fields");
+    if (!form.full_name || form.full_name.trim().length < 2) {
+      toast.error("Please enter your full name");
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(form.phone)) {
+      toast.error("Enter a valid 10-digit Indian mobile (starts with 6-9)");
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) {
+      toast.error("Enter a valid email address");
       return;
     }
     setLoading(true);
@@ -37,7 +45,9 @@ export default function BookingDialog({ open, onOpenChange, remaining }) {
       onOpenChange(false);
       navigate(`/booking/${data.id}`);
     } catch (err) {
-      toast.error(err?.response?.data?.detail || "Booking failed");
+      const detail = err?.response?.data?.detail;
+      const msg = Array.isArray(detail) ? detail[0]?.msg : detail;
+      toast.error(msg || "Booking failed");
     } finally {
       setLoading(false);
     }
@@ -73,15 +83,24 @@ export default function BookingDialog({ open, onOpenChange, remaining }) {
             />
           </div>
           <div>
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              data-testid="booking-phone-input"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              disabled={soldOut}
-              placeholder="+91..."
-            />
+            <Label htmlFor="phone">Phone (Indian mobile)</Label>
+            <div className="mt-1.5 flex items-stretch rounded-md border border-input focus-within:ring-2 focus-within:ring-orange-400 overflow-hidden">
+              <span className="px-3 flex items-center bg-amber-50 text-slate-700 text-sm font-semibold border-r border-input">+91</span>
+              <input
+                id="phone"
+                data-testid="booking-phone-input"
+                inputMode="numeric"
+                maxLength={10}
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                disabled={soldOut}
+                placeholder="9876543210"
+                className="flex-1 px-3 py-2 text-sm outline-none bg-transparent"
+              />
+            </div>
+            {form.phone && !/^[6-9]\d{9}$/.test(form.phone) && (
+              <p className="text-xs text-red-600 mt-1">Enter 10 digits starting with 6-9</p>
+            )}
           </div>
 
           <div>
