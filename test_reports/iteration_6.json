@@ -1,0 +1,33 @@
+{
+  "summary": "Verified the WhatsApp screenshot-delivery fix end to end. Backend: extended /app/backend/tests/backend_test.py with TestPublicProofEndpoint (4), TestShareUrlContainsLinks (1), TestTicketPdfGating (2), Indian-mobile normalization/rejection params, and fixed the stale quantity test (now 422 at qty=21, le=20). Final run: 44 passed, 1 skipped, 0 failed. GET /api/bookings/{id}/proof returns 200 image/png (and image/jpeg preserved) after upload, 404 before upload and for unknown id, content bytes match the uploaded file. GET /api/bookings/{id} wa.me text (URL-decoded) contains name, +91 phone, email, tickets, ₹amount, 8-char uppercase booking id, status, AND both https://.../booking/{id} and https://.../api/bookings/{id}/proof (proof link correctly absent pre-upload). /api/tickets/{id}/pdf: 403 pre-confirm, 200 %PDF post-confirm, 404 unknown. Frontend (Playwright, 1920x1080): on /booking/{id} the hidden screenshot-input upload triggered a real popup to api.whatsapp.com/send?phone=917483557316 with full pre-filled text, the blue 'Payment screenshot received ✓' block rendered with green whatsapp-notify-0 'Send to Kiran' and whatsapp-notify-1 'Send to Rahul' anchors whose hrefs start https://wa.me/91... and contain both links; status flipped to AWAITING VERIFICATION; public proof URL loads as image in the browser without auth. Regression: admin login stellar2026 -> confirm -> row CONFIRMED and /booking/{id} shows the big green 'Successfully Paid ✓' banner. All TEST_QA rows purged (deleted=26, remaining=1 non-test row).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "server.py:_wa_share_url", "issue": "Dead unreachable code: the function has a duplicated `text = ...` / `return ...` pair (lines 223-224) after the first return. Harmless but should be deleted."},
+      {"endpoint": "GET /api/bookings/{id}/proof", "issue": "Payment screenshots are publicly readable by anyone holding the booking UUID, with no Cache-Control/no-store header and no rate limiting. Acceptable per design (unguessable token) but worth adding `Cache-Control: private, no-store` so intermediaries/CDN don't cache payment proofs."},
+      {"endpoint": "POST /api/bookings (test capacity)", "issue": "The pytest suite creates ~30 bookings, which holds/confirms most of the 45 early-bird slots and causes cascading 409s on a dirty DB. Must run `python /app/backend/tests/purge_test_qa.py` BEFORE and after pytest."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Confirmation /booking/{id}", "issues": ["Guest phone is shown bare (e.g. '9844912007') in the details grid and in the green banner text, while the WhatsApp message now uses '+91 9844912006' — minor inconsistency; consider rendering '+91 {phone}' in the UI too.", "The blue WhatsApp re-share block is still inside the !confirmed branch, so a confirmed guest cannot re-send details (carried over from iteration 5; intentional?)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/backend/tests/purge_test_qa.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": ["Remove the unreachable duplicated return block in _wa_share_url()", "Optional: add Cache-Control: private, no-store to /api/bookings/{id}/proof response", "Optional: display +91 prefix for guest phone on the confirmation page"],
+  "critical_code_review_comments": [
+    "_wa_share_url() contains dead code after `return` (duplicate text/return) — remove.",
+    "public_proof() decodes the whole base64 screenshot into memory on every request; fine at current scale but a GridFS/file store would be better if screenshots grow.",
+    "test_wrong_pass_type_rejected previously used full_name='X'/phone='1', which now trip the new Pydantic validators (422) before the pass_type 400 check — test payloads updated to valid name/phone so the 400 path is actually exercised."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100% (44 passed, 1 skipped)", "frontend": "100%"},
+  "seed_data_creation": "Created TEST_QA bookings via API and Playwright (incl. one confirmed with delivered@resend.dev); all purged afterwards. One pre-existing non-test pending row left untouched.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "Admin password stellar2026 (from /app/memory/test_credentials.md)",
+  "context_for_next_testing_agent": "backend_test.py now covers: event info, booking create + phone normalization (+91/0/spaces accepted, 6-9 first digit enforced), quantity ge=1 le=20 (422 at 21), upload-screenshot, admin auth/confirm/reject/screenshot, whatsapp_share_urls shape + booking & proof links, public /proof endpoint, ticket PDF 403/200/404. ALWAYS purge first: `python /app/backend/tests/purge_test_qa.py` (suite otherwise exhausts the 45 early-bird slots -> 409 cascade). Playwright notes: screenshot input is hidden -> use set_input_files with state='attached'; capture the auto-opened WhatsApp tab with page.context.expect_page(); admin testids are admin-password-input/admin-login-btn/booking-row-{id}/confirm-{id}.",
+  "rca_of_the_issue": "No defect found in the reported fix. The proof endpoint and the enriched wa.me text both work; the only failures during this run were my own stale/over-strict test payloads (qty=11, full_name='X', phone='1') and slot exhaustion from un-purged test bookings, both corrected in the test code."
+}

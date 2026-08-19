@@ -32,8 +32,12 @@ export default function Confirmation() {
       await api.post(`/bookings/${id}/upload-screenshot`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      toast.success("Screenshot uploaded! We're verifying now.");
-      load();
+      toast.success("Uploaded! Sending details to organizers...");
+      const fresh = await api.get(`/bookings/${id}`);
+      setB(fresh.data);
+      // Auto-open WhatsApp to first organizer with details + screenshot link
+      const wa = fresh.data?.whatsapp_share_urls?.[0]?.url;
+      if (wa) window.open(wa, "_blank", "noopener,noreferrer");
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Upload failed");
     } finally {
@@ -100,7 +104,7 @@ export default function Confirmation() {
           <div className="rounded-xl bg-amber-50 border border-amber-200 p-5 mb-6">
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div><span className="text-slate-500">Name</span><div className="font-semibold text-slate-900" data-testid="conf-name">{b.full_name}</div></div>
-              <div><span className="text-slate-500">Phone</span><div className="font-semibold text-slate-900">{b.phone}</div></div>
+              <div><span className="text-slate-500">Phone</span><div className="font-semibold text-slate-900">+91 {b.phone}</div></div>
               <div><span className="text-slate-500">Tickets</span><div className="font-semibold text-slate-900">{b.quantity} × Early Bird</div></div>
               <div><span className="text-slate-500">Amount</span><div className="font-display font-black text-orange-600 text-xl" data-testid="conf-amount">₹{b.amount}</div></div>
               <div className="col-span-2"><span className="text-slate-500">Status</span>
@@ -165,16 +169,32 @@ export default function Confirmation() {
 
               {b.screenshot_uploaded && (
                 <div className="rounded-xl bg-blue-50 border-2 border-blue-300 p-5 mt-2">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 mb-4">
                     <CheckCircle2 className="w-6 h-6 text-blue-700 mt-0.5 shrink-0" />
                     <div className="text-sm text-blue-950 leading-relaxed">
                       <p className="font-bold text-base mb-1">Payment screenshot received ✓</p>
                       <p>
-                        Your details have been sent to <b>Kiran</b> and <b>Rahul</b> on WhatsApp.
-                        Please wait up to <b>2 hours</b> — we'll manually verify the transaction and
-                        <b> DM your pass directly to your WhatsApp number</b> ({b.phone}).
+                        Now send it to <b>Kiran</b> and <b>Rahul</b> on WhatsApp so they can verify.
+                        Tap the buttons below — your booking details and screenshot link are pre-filled.
+                        We'll DM your pass to <b>+91 {b.phone}</b> within 2 hours.
                       </p>
                     </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {b.whatsapp_share_urls?.map((w, i) => (
+                      <a
+                        key={w.phone}
+                        href={w.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="pill-btn flex-1 justify-center"
+                        style={{ background: "linear-gradient(135deg, #25D366 0%, #128C7E 100%)", boxShadow: "0 8px 24px rgba(37, 211, 102, 0.35)" }}
+                        data-testid={`whatsapp-notify-${i}`}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Send to {i === 0 ? "Kiran" : "Rahul"}
+                      </a>
+                    ))}
                   </div>
                 </div>
               )}

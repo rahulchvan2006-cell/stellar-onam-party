@@ -201,18 +201,23 @@ def require_admin(x_admin_password: Optional[str] = Header(None)):
 
 def _wa_share_url(phone: str, doc: dict) -> str:
     """Build a wa.me deep-link the guest can tap to forward booking details."""
+    base = (PUBLIC_APP_URL or "").rstrip("/")
+    booking_link = f"{base}/booking/{doc['id']}" if base else ""
+    screenshot_link = f"{base}/api/bookings/{doc['id']}/proof" if base and doc.get("screenshot_mime") else ""
     lines = [
         "*New Onam Party Booking*",
         f"Name: {doc['full_name']}",
-        f"Phone: {doc['phone']}",
+        f"Phone: +91 {doc['phone']}",
         f"Email: {doc['email']}",
         f"Tickets: {doc['quantity']} × Early Bird",
         f"Amount: ₹{doc['amount']}",
-        f"Booking ID: {doc['id'][:8]}",
+        f"Booking ID: {doc['id'][:8].upper()}",
         f"Status: {doc['status'].replace('_',' ').upper()}",
-        "",
-        "Payment screenshot uploaded on the booking page.",
     ]
+    if screenshot_link:
+        lines += ["", f"Payment screenshot: {screenshot_link}"]
+    if booking_link:
+        lines += [f"Booking page: {booking_link}"]
     text = "\n".join(lines)
     return f"https://wa.me/{phone.lstrip('+')}?text={quote(text)}"
 
@@ -333,6 +338,19 @@ async def upload_screenshot(booking_id: str, background_tasks: BackgroundTasks, 
         + f"\nReview: {PUBLIC_APP_URL or ''}/admin",
     )
     return {"ok": True, "status": "awaiting_verification"}
+
+
+@api_router.get("/bookings/{booking_id}/proof")
+async def public_proof(booking_id: str):
+    """Public screenshot preview (booking_id acts as unguessable token)."""
+    doc = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not doc or not doc.get("screenshot"):
+        raise HTTPException(404, "Screenshot not found")
+    try:
+        raw = base64.b64decode(doc["screenshot"])
+    except Exception:
+        raise HTTPException(500, "Invalid screenshot data")
+    return Response(content=raw, media_type=doc.get("screenshot_mime", "image/jpeg"), headers={"Cache-Control": "private, no-store"})
 
 
 @api_router.get("/bookings/{booking_id}", response_model=BookingOut)

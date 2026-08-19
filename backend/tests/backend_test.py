@@ -38,10 +38,10 @@ def created_ids():
     return []
 
 
-def make_booking(api, quantity=1, email="test_qa@example.com"):
+def make_booking(api, quantity=1, email="test_qa@example.com", phone="9999999999"):
     payload = {
         "full_name": "TEST_QA User",
-        "phone": "9999999999",
+        "phone": phone,
         "email": email,
         "quantity": quantity,
         "pass_type": "early_bird",
@@ -117,15 +117,28 @@ class TestBookingCreate:
         assert r.status_code == 422
 
     def test_quantity_above_max_rejected(self, api):
-        r = make_booking(api, 11)
+        r = make_booking(api, 21)
         assert r.status_code == 422
+
+    @pytest.mark.parametrize("phone", ["12345", "5123456789", "98449120061234", "abcdefghij"])
+    def test_invalid_indian_mobile_rejected(self, api, phone):
+        r = make_booking(api, 1, phone=phone)
+        assert r.status_code == 422, f"{phone} accepted"
+
+    @pytest.mark.parametrize("phone,expected", [("9844912099", "9844912099"), ("+919844912099", "9844912099"), ("91 98449 12099", "9844912099"), ("09844912099", "9844912099")])
+    def test_indian_mobile_normalized(self, api, created_ids, phone, expected):
+        r = make_booking(api, 1, phone=phone)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        created_ids.append(d["id"])
+        assert d["phone"] == expected
 
     def test_wrong_pass_type_rejected(self, api):
         r = api.post(
             f"{BASE_URL}/api/bookings",
             json={
-                "full_name": "X",
-                "phone": "1",
+                "full_name": "TEST_QA User",
+                "phone": "9844912006",
                 "email": "test_qa2@example.com",
                 "quantity": 1,
                 "pass_type": "vip",
@@ -137,9 +150,9 @@ class TestBookingCreate:
     def test_over_quantity_returns_409(self, api):
         info = api.get(f"{BASE_URL}/api/event/info", timeout=30).json()
         remaining = info["early_bird_remaining"]
-        # quantity max is 10; only testable when remaining < 10
-        if remaining >= 10:
-            pytest.skip(f"remaining={remaining} >= max quantity 10; cannot trigger 409 via API")
+        # quantity max is 20; only testable when remaining < 20
+        if remaining >= 20:
+            pytest.skip(f"remaining={remaining} >= max quantity 20; cannot trigger 409 via API")
         r = make_booking(api, remaining + 1)
         assert r.status_code == 409
         assert "slots" in r.json()["detail"].lower()
@@ -420,3 +433,106 @@ class TestWhatsAppShareUrls:
         d = api.get(f"{BASE_URL}/api/bookings/{bid}", timeout=30).json()
         urls = self._assert_shape(d)
         assert "AWAITING VERIFICATION" in unquote(urls[0]["url"])
+
+
+# ---- Module: public screenshot proof endpoint + wa.me links (iteration 6) ----
+PUBLIC_BASE = "https://onam-memories-mysore.preview.emergentagent.com"
+
+
+class TestPublicProofEndpoint:
+    def test_proof_404_before_upload(self, api, created_ids):
+        r = make_booking(api, 1)
+        assert r.status_code == 200, r.text
+        bid = r.json()["id"]
+        created_ids.append(bid)
+        p = api.get(f"{BASE_URL}/api/bookings/{bid}/proof", timeout=30)
+        assert p.status_code == 404, p.status_code
+
+    def test_proof_404_unknown_id(self, api):
+        p = api.get(f"{BASE_URL}/api/bookings/no-such-booking-xyz/proof", timeout=30)
+        assert p.status_code == 404
+
+    def test_proof_returns_image_after_upload(self, api, created_ids):
+        r = make_booking(api, 1)
+        bid = r.json()["id"]
+        created_ids.append(bid)
+        up = api.post(
+            f"{BASE_URL}/api/bookings/{bid}/upload-screenshot",
+            files={"file": ("proof.png", io.BytesIO(PNG_1PX), "image/png")},
+            timeout=60,
+        )
+        assert up.status_code == 200, up.text
+        p = api.get(f"{BASE_URL}/api/bookings/{bid}/proof", timeout=30)
+        assert p.status_code == 200, p.text[:300]
+        assert p.headers["content-type"].startswith("image/"), p.headers["content-type"]
+        assert p.headers["content-type"] == "image/png"
+        assert p.content == PNG_1PX
+
+    def test_proof_jpeg_content_type_preserved(self, api, created_ids):
+        r = make_booking(api, 1)
+        bid = r.json()["id"]
+        created_ids.append(bid)
+        api.post(
+            f"{BASE_URL}/api/bookings/{bid}/upload-screenshot",
+            files={"file": ("proof.jpg", io.BytesIO(PNG_1PX), "image/jpeg")},
+            timeout=60,
+        )
+        p = api.get(f"{BASE_URL}/api/bookings/{bid}/proof", timeout=30)
+        assert p.status_code == 200
+        assert p.headers["content-type"] == "image/jpeg"
+
+
+class TestShareUrlContainsLinks:
+    def test_links_before_and_after_upload(self, api, created_ids):
+        r = make_booking(api, 2, phone="+919844912006")
+        assert r.status_code == 200, r.text
+        d = r.json()
+        bid = d["id"]
+        created_ids.append(bid)
+
+        # Before upload: booking page link present, proof link absent
+        pre = unquote(d["whatsapp_share_urls"][0]["url"].split("?text=", 1)[1])
+        assert f"{PUBLIC_BASE}/booking/{bid}" in pre, pre
+        assert f"/api/bookings/{bid}/proof" not in pre, pre
+
+        api.post(
+            f"{BASE_URL}/api/bookings/{bid}/upload-screenshot",
+            files={"file": ("p.png", io.BytesIO(PNG_1PX), "image/png")},
+            timeout=60,
+        )
+        g = api.get(f"{BASE_URL}/api/bookings/{bid}", timeout=30).json()
+        for item in g["whatsapp_share_urls"]:
+            txt = unquote(item["url"].split("?text=", 1)[1])
+            assert f"{PUBLIC_BASE}/booking/{bid}" in txt, txt
+            assert f"{PUBLIC_BASE}/api/bookings/{bid}/proof" in txt, txt
+            # full details
+            assert "TEST_QA User" in txt
+            assert "+91 9844912006" in txt
+            assert "Tickets: 2 × Early Bird" in txt
+            assert "Amount: ₹998" in txt
+            assert bid[:8].upper() in txt
+            assert "AWAITING VERIFICATION" in txt
+
+
+class TestTicketPdfGating:
+    def test_pdf_403_before_confirm_200_after(self, api, admin_headers, created_ids):
+        r = make_booking(api, 1, email="delivered@resend.dev")
+        bid = r.json()["id"]
+        created_ids.append(bid)
+        pre = api.get(f"{BASE_URL}/api/tickets/{bid}/pdf", timeout=30)
+        assert pre.status_code == 403, pre.status_code
+
+        c = api.post(
+            f"{BASE_URL}/api/admin/bookings/{bid}/confirm", headers=admin_headers, timeout=60
+        )
+        assert c.status_code == 200, c.text
+        assert c.json()["status"] == "confirmed"
+
+        post = api.get(f"{BASE_URL}/api/tickets/{bid}/pdf", timeout=60)
+        assert post.status_code == 200, post.text[:200]
+        assert post.headers["content-type"] == "application/pdf"
+        assert post.content[:4] == b"%PDF"
+
+    def test_pdf_unknown_404(self, api):
+        r = api.get(f"{BASE_URL}/api/tickets/unknown-xyz/pdf", timeout=30)
+        assert r.status_code == 404
