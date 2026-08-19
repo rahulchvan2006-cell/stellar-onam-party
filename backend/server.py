@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends, UploadFile, File, Form
+from fastapi import FastAPI, APIRouter, HTTPException, Header, Depends, UploadFile, File, Form, BackgroundTasks
+from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -17,6 +18,9 @@ from urllib.parse import quote
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+from email_helper import send_email, build_ticket_confirmed_html
+from ticket_pdf import build_ticket_pdf
+
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
@@ -29,6 +33,7 @@ UPI_ID = os.environ.get("UPI_ID", "7483557316-3@ybl")
 UPI_PAYEE_NAME = os.environ.get("UPI_PAYEE_NAME", "Stellar Entertainment")
 ORGANIZER_PHONES = os.environ.get("ORGANIZER_PHONES", "+917483557316,+919844912006")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "stellar2026")
+PUBLIC_APP_URL = os.environ.get("PUBLIC_APP_URL", "").rstrip("/")
 EARLY_BIRD_PRICE = 499
 EARLY_BIRD_TOTAL_SLOTS = 45
 HOLD_HOURS = 24  # full hold before auto-expiring a pending booking
@@ -313,12 +318,12 @@ async def admin_get_screenshot(booking_id: str, _: bool = Depends(require_admin)
 
 
 @api_router.post("/admin/bookings/{booking_id}/confirm")
-async def admin_confirm(booking_id: str, _: bool = Depends(require_admin)):
+async def admin_confirm(booking_id: str, background_tasks: BackgroundTasks, _: bool = Depends(require_admin)):
     doc = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not doc:
         raise HTTPException(404, "Booking not found")
     if doc["status"] == "confirmed":
-        return {"ok": True, "status": "confirmed"}
+        return {"ok": True, "status": "confirmed", "email_queued": False}
     # capacity check
     confirmed = await count_confirmed_slots()
     if confirmed + doc["quantity"] > EARLY_BIRD_TOTAL_SLOTS:
@@ -327,7 +332,55 @@ async def admin_confirm(booking_id: str, _: bool = Depends(require_admin)):
         {"id": booking_id},
         {"$set": {"status": "confirmed", "updated_at_iso": iso(now())}},
     )
-    return {"ok": True, "status": "confirmed"}
+    # Queue confirmation email + e-ticket (non-blocking)
+    background_tasks.add_task(_send_confirmation_email, booking_id)
+    return {"ok": True, "status": "confirmed", "email_queued": True}
+
+
+async def _send_confirmation_email(booking_id: str):
+    """Fetch fresh doc and email the guest their confirmed e-ticket link."""
+    doc = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not doc or doc.get("status") != "confirmed":
+        return
+    base = PUBLIC_APP_URL or "https://onam-memories-mysore.preview.emergentagent.com"
+    ticket_pdf_url = f"{base}/api/tickets/{booking_id}/pdf"
+    booking_page_url = f"{base}/booking/{booking_id}"
+    html = build_ticket_confirmed_html(
+        guest_name=doc["full_name"],
+        quantity=doc["quantity"],
+        amount=doc["amount"],
+        booking_short_id=doc["id"][:8].upper(),
+        ticket_pdf_url=ticket_pdf_url,
+        booking_page_url=booking_page_url,
+    )
+    try:
+        await send_email(
+            to=doc["email"],
+            subject="Your Onam Party pass is confirmed 🌺",
+            html=html,
+        )
+        await db.bookings.update_one(
+            {"id": booking_id},
+            {"$set": {"email_sent_at_iso": iso(now())}},
+        )
+    except Exception as e:
+        logging.getLogger(__name__).error(f"confirmation email failed for {booking_id}: {e}")
+
+
+@api_router.get("/tickets/{booking_id}/pdf")
+async def download_ticket_pdf(booking_id: str):
+    """Public endpoint (booking_id acts as an unguessable token)."""
+    doc = await db.bookings.find_one({"id": booking_id}, {"_id": 0, "screenshot": 0, "qr_data_url": 0})
+    if not doc:
+        raise HTTPException(404, "Booking not found")
+    if doc.get("status") != "confirmed":
+        raise HTTPException(403, "Ticket available after admin confirmation")
+    pdf_bytes = build_ticket_pdf(doc)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="onam-party-{booking_id[:8]}.pdf"'},
+    )
 
 
 @api_router.post("/admin/bookings/{booking_id}/reject")

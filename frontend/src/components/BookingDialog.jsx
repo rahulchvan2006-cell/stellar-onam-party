@@ -147,11 +147,19 @@ export default function BookingDialog({ open, onOpenChange, remaining }) {
             />
           </div>
 
-          <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 flex items-center justify-between">
-            <span className="text-slate-700 font-medium">Total</span>
-            <span className="font-display text-2xl font-black text-orange-600" data-testid="booking-total">
-              ₹{total}
-            </span>
+          <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
+            <div className="flex items-center justify-between text-sm text-slate-600 mb-1">
+              <span data-testid="booking-breakdown">
+                {form.quantity} × ₹{PRICE}
+              </span>
+              <span>= ₹{total}</span>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-amber-200">
+              <span className="text-slate-700 font-medium">Total</span>
+              <span className="font-display text-2xl font-black text-orange-600" data-testid="booking-total">
+                ₹{total}
+              </span>
+            </div>
           </div>
 
           <p className="text-xs text-slate-500 leading-relaxed">
