@@ -42,6 +42,19 @@ body {
 
 .cream-bg { background: #FDFBF7; }
 
+/* Warm traditional pattern background — subtle gold pookalam-style motif on cream */
+.pattern-bg {
+    background-color: #FDFBF7;
+    background-image:
+        radial-gradient(circle at 20% 20%, rgba(233, 176, 69, 0.14) 0, transparent 42%),
+        radial-gradient(circle at 80% 30%, rgba(249, 83, 11, 0.10) 0, transparent 45%),
+        radial-gradient(circle at 50% 80%, rgba(233, 176, 69, 0.12) 0, transparent 50%),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'><g fill='none' stroke='%23D4AF37' stroke-opacity='0.14' stroke-width='1'><circle cx='60' cy='60' r='24'/><circle cx='60' cy='60' r='14'/><circle cx='60' cy='60' r='6'/><path d='M60 10v20M60 90v20M10 60h20M90 60h20M25 25l14 14M81 81l14 14M25 95l14-14M81 39l14-14'/></g></svg>");
+    background-repeat: no-repeat, no-repeat, no-repeat, repeat;
+    background-size: auto, auto, auto, 120px 120px;
+    background-attachment: fixed, fixed, fixed, scroll;
+}
+
 .pill-btn {
     display: inline-flex;
     align-items: center;

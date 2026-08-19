@@ -24,7 +24,7 @@ import BookingDialog from "@/components/BookingDialog";
 import { api } from "@/lib/api";
 
 const PALM = "https://images.pexels.com/photos/38601629/pexels-photo-38601629.jpeg";
-const BAND = "https://images.pexels.com/photos/33284931/pexels-photo-33284931.jpeg";
+const BAND = "https://images.pexels.com/photos/14934260/pexels-photo-14934260.jpeg";
 const DJ = "https://images.pexels.com/photos/9534908/pexels-photo-9534908.jpeg";
 
 export default function Landing() {
@@ -43,19 +43,22 @@ export default function Landing() {
   const soldOut = info?.sold_out;
 
   return (
-    <div className="min-h-screen cream-bg pb-24 md:pb-0">
+    <div className="min-h-screen pattern-bg pb-24 md:pb-0">
       {/* NAV */}
-      <nav className="absolute top-0 left-0 right-0 z-40 px-4 sm:px-10 py-4 sm:py-5 flex items-center justify-between">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/70 backdrop-blur-md border border-white/20">
-          <Flower2 className="w-4 h-4 text-amber-300" />
-          <span className="font-display text-[10px] sm:text-sm font-bold tracking-[0.2em] sm:tracking-[0.25em] gold-text uppercase">
-            Stellar Entertainment
+      <nav className="absolute top-0 left-0 right-0 z-40 px-4 sm:px-10 py-4 sm:py-5 flex items-center justify-center">
+        <div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-slate-900/75 backdrop-blur-md border border-amber-300/40 shadow-lg">
+          <Flower2 className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
+          <span className="font-script text-lg sm:text-2xl leading-none gold-text drop-shadow-sm">
+            Stellar
+          </span>
+          <span className="font-display text-[10px] sm:text-xs font-bold tracking-[0.28em] text-amber-200/90 uppercase pt-0.5">
+            Presents
           </span>
         </div>
         <button
           data-testid="nav-book-btn"
           onClick={() => setOpenBooking(true)}
-          className="hidden md:inline-flex pill-btn-outline"
+          className="hidden md:inline-flex pill-btn-outline absolute right-10"
         >
           Book Now
         </button>
@@ -101,20 +104,18 @@ export default function Landing() {
             One Vibe. Our People. Endless Memories.
           </p>
 
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-8 text-slate-900">
-            <div className="flex items-center gap-2 text-sm sm:text-base">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-8">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-amber-300 shadow-md">
               <Calendar className="w-4 h-4 text-orange-600" />
-              <span className="font-semibold">29th August</span>
+              <span className="font-display font-bold text-slate-900 text-sm sm:text-base">29th August</span>
             </div>
-            <div className="w-1 h-1 rounded-full bg-slate-700 hidden sm:block" />
-            <div className="flex items-center gap-2 text-sm sm:text-base">
-              <Clock className="w-4 h-4 text-orange-600" />
-              <span className="font-semibold">4:00 PM onwards</span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-600 shadow-md">
+              <Clock className="w-4 h-4 text-white" />
+              <span className="font-display font-bold text-white text-sm sm:text-base">4:00 PM onwards</span>
             </div>
-            <div className="w-1 h-1 rounded-full bg-slate-700 hidden sm:block" />
-            <div className="flex items-center gap-2 text-sm sm:text-base">
-              <MapPin className="w-4 h-4 text-orange-600" />
-              <span className="font-semibold">Serenity Groove, Mysore</span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 shadow-md">
+              <MapPin className="w-4 h-4 text-amber-300" />
+              <span className="font-display font-bold text-white text-sm sm:text-base">Serenity Groove, Mysore</span>
             </div>
           </div>
 
@@ -152,7 +153,7 @@ export default function Landing() {
       </div>
 
       {/* ABOUT */}
-      <section className="cream-bg py-20 px-5">
+      <section className="pattern-bg py-20 px-5">
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-xs uppercase tracking-[0.3em] text-orange-600 font-semibold mb-3">About the Event</p>
           <h2 className="font-display text-4xl sm:text-5xl font-black text-slate-900 mb-6">
@@ -203,7 +204,7 @@ export default function Landing() {
       </section>
 
       {/* HIGHLIGHTS */}
-      <section className="cream-bg py-20 px-5">
+      <section className="pattern-bg py-20 px-5">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <p className="text-xs uppercase tracking-[0.3em] text-orange-600 font-semibold mb-3">The Vibe</p>
@@ -259,7 +260,7 @@ export default function Landing() {
       </section>
 
       {/* VENUE */}
-      <section className="cream-bg py-20 px-5">
+      <section className="pattern-bg py-20 px-5">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
             <p className="text-xs uppercase tracking-[0.3em] text-orange-600 font-semibold mb-3">Venue & Location</p>
@@ -343,7 +344,7 @@ export default function Landing() {
       </section>
 
       {/* FAQ */}
-      <section className="cream-bg py-20 px-5">
+      <section className="pattern-bg py-20 px-5">
         <div className="max-w-3xl mx-auto">
           <div className="text-center mb-10">
             <p className="text-xs uppercase tracking-[0.3em] text-orange-600 font-semibold mb-3">Good to Know</p>

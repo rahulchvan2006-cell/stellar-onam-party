@@ -43,7 +43,7 @@ export default function Confirmation() {
 
   if (!b) {
     return (
-      <div className="min-h-screen flex items-center justify-center cream-bg">
+      <div className="min-h-screen flex items-center justify-center pattern-bg">
         <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
       </div>
     );
@@ -53,7 +53,7 @@ export default function Confirmation() {
   const awaiting = b.status === "awaiting_verification";
 
   return (
-    <div className="min-h-screen cream-bg py-10 px-5">
+    <div className="min-h-screen pattern-bg py-10 px-5">
       <div className="max-w-2xl mx-auto">
         <Link to="/" className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 mb-6 text-sm">
           <Flower2 className="w-4 h-4" /> Back to home

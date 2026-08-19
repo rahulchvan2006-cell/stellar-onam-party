@@ -76,7 +76,7 @@ export default function Admin() {
 
   if (!token) {
     return (
-      <div className="min-h-screen cream-bg flex items-center justify-center px-5">
+      <div className="min-h-screen pattern-bg flex items-center justify-center px-5">
         <form onSubmit={login} className="card-warm p-8 w-full max-w-sm">
           <h1 className="font-display text-3xl font-black text-slate-900 mb-6 text-center">Admin Login</h1>
           <Label htmlFor="pw">Password</Label>
@@ -97,7 +97,7 @@ export default function Admin() {
   const stats = data?.stats;
 
   return (
-    <div className="min-h-screen cream-bg py-8 px-5">
+    <div className="min-h-screen pattern-bg py-8 px-5">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div>
